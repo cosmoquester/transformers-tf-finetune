@@ -6,7 +6,3 @@
 [![codecov](https://codecov.io/gh/cosmoquester/transformers-bart-finetune/branch/master/graph/badge.svg?token=GTsIlZy6oG)](https://codecov.io/gh/cosmoquester/transformers-bart-finetune)
 
 Script to train hugginface transformers BART with Tensorflow 2
-
-## Things to be changed
-
-- "transformers_bart_finetune" directory name
