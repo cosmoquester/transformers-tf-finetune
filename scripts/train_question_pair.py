@@ -11,25 +11,26 @@ from transformers import PreTrainedTokenizerFast
 from transformers_bart_finetune.models import TFBartForSequenceClassification
 from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
-NSMC_TRAIN_URI = "https://raw.githubusercontent.com/e9t/nsmc/master/ratings_train.txt"
-NSMC_TEST_URI = "https://raw.githubusercontent.com/e9t/nsmc/master/ratings_test.txt"
+QUESTION_PAIR_TRAIN_URI = "https://raw.githubusercontent.com/songys/Question_pair/master/train.txt"
+QUESTION_PAIR_VALID_URI = "https://raw.githubusercontent.com/songys/Question_pair/master/validation.txt"
+QUESTION_PAIR_TEST_URI = "https://raw.githubusercontent.com/songys/Question_pair/master/test.txt"
 
 # fmt: off
-parser = argparse.ArgumentParser(description="Script to train NSMC Task with BART")
+parser = argparse.ArgumentParser(description="Script to train Question Pair Task with BART")
 parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
-parser.add_argument("--train-dataset-path", default=NSMC_TRAIN_URI, help="nsmc train dataset if using local file")
-parser.add_argument("--test-dataset-path", default=NSMC_TEST_URI, help="nsmc test dataset if using local file")
+parser.add_argument("--train-dataset-path", default=QUESTION_PAIR_TRAIN_URI, help="question pair train dataset if using local file")
+parser.add_argument("--valid-dataset-path", default=QUESTION_PAIR_VALID_URI, help="question pair validation dataset if using local file")
+parser.add_argument("--test-dataset-path", default=QUESTION_PAIR_TEST_URI, help="question pair test dataset if using local file")
 parser.add_argument("--shuffle-buffer-size", type=int, default=5000)
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
-parser.add_argument("--epochs", type=int, default=3)
+parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--learning-rate", type=float, default=5e-5)
 parser.add_argument("--min-learning-rate", type=float, default=1e-5)
 parser.add_argument("--warmup-rate", type=float, default=0.06)
 parser.add_argument("--warmup-steps", type=int)
-parser.add_argument("--batch-size", type=int, default=256)
-parser.add_argument("--dev-batch-size", type=int, default=256)
-parser.add_argument("--num-dev-dataset", type=int, default=30000)
+parser.add_argument("--batch-size", type=int, default=128)
+parser.add_argument("--dev-batch-size", type=int, default=128)
 parser.add_argument("--tensorboard-update-freq", type=int, default=1)
 parser.add_argument("--mixed-precision", action="store_true", help="Use mixed precision FP16")
 parser.add_argument("--seed", type=int, help="Set random seed")
@@ -39,11 +40,11 @@ parser.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", 
 
 def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast) -> Tuple[tf.data.Dataset, int]:
     """
-    Load NSMC dataset from local file or web
+    Load QuestionPair dataset from local file or web
 
     :param dataset_path: local file path or file uri
     :param tokenizer: PreTrainedTokenizer for tokenizing
-    :returns: NSMC dataset, number of dataset
+    :returns: QuestionPair dataset, number of dataset
     """
     if dataset_path.startswith("https://"):
         with urllib.request.urlopen(dataset_path) as response:
@@ -55,11 +56,12 @@ def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast) -> Tuple
 
     bos = tokenizer.bos_token
     eos = tokenizer.eos_token
+    sep = tokenizer.sep_token
 
     sentences = []
     labels = []
-    for _, sentence, label in csv.reader(lines, delimiter="\t"):
-        sentences.append(bos + sentence + eos)
+    for question1, question2, label in csv.reader(lines, delimiter="\t"):
+        sentences.append(bos + question1 + sep + question2 + eos)
         labels.append(int(label))
 
     tokens = tokenizer(
@@ -101,22 +103,19 @@ def main(args: argparse.Namespace):
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
-        dataset, total_dataset_size = load_dataset(args.train_dataset_path, tokenizer)
-        dataset = dataset.shuffle(args.shuffle_buffer_size)
-
-        train_dataset = dataset.skip(args.num_dev_dataset).batch(args.batch_size)
-        dev_dataset = dataset.take(args.num_dev_dataset).batch(args.dev_batch_size)
+        train_dataset, train_dataset_size = load_dataset(args.train_dataset_path, tokenizer)
+        train_dataset = train_dataset.shuffle(args.shuffle_buffer_size).batch(args.batch_size)
+        valid_dataset = load_dataset(args.valid_dataset_path, tokenizer)[0].batch(args.dev_batch_size)
         test_dataset = load_dataset(args.test_dataset_path, tokenizer)[0].batch(args.dev_batch_size)
 
         # Model Initialize
         logger.info("[+] Model Initialize")
         model = TFBartForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=2)
-        model.config.id2label = {0: "negative", 1: "positive"}
-        model.config.label2id = {"negative": 0, "positive": 1}
+        model.config.id2label = {0: "non-duplicate", 1: "duplicate"}
+        model.config.label2id = {"non-duplicate": 0, "duplicate": 1}
 
         # Model Compile
         logger.info("[+] Model compiling complete")
-        train_dataset_size = total_dataset_size - args.num_dev_dataset
         total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
         model.compile(
             optimizer=tf.optimizers.Adam(
@@ -136,7 +135,7 @@ def main(args: argparse.Namespace):
         logger.info("[+] Start training")
         model.fit(
             train_dataset,
-            validation_data=dev_dataset,
+            validation_data=valid_dataset,
             epochs=args.epochs,
             callbacks=[
                 tf.keras.callbacks.ModelCheckpoint(
