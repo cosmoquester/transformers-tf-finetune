@@ -130,7 +130,7 @@ def main(args: argparse.Namespace):
                 )
             ),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")],
         )
 
         # Training
@@ -144,7 +144,7 @@ def main(args: argparse.Namespace):
                     path_join(
                         args.output_path,
                         "models",
-                        "model-{epoch}epoch-{val_loss:.4f}loss_{val_binary_accuracy:.4f}acc.ckpt",
+                        "model-{epoch}epoch-{val_loss:.4f}loss_{val_accuracy:.4f}acc.ckpt",
                     ),
                     save_weights_only=True,
                     verbose=1,
