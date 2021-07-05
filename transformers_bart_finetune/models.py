@@ -15,8 +15,9 @@ class TFBartClassificationHead(tf.keras.layers.Layer):
         inner_dim: int,
         num_classes: int,
         pooler_dropout: float,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self.dense = tf.keras.layers.Dense(inner_dim, name="dense")
         self.dropout = tf.keras.layers.Dropout(pooler_dropout, name="dropout")
         self.out_proj = tf.keras.layers.Dense(num_classes, name="out_proj")
@@ -48,7 +49,7 @@ class TFBartForSequenceClassification(TFBartPretrainedModel):
 
         self.model = TFBartMainLayer(config, name="model")
         self.classification_head = TFBartClassificationHead(
-            config.d_model, config.num_labels, config.classifier_dropout
+            config.d_model, config.num_labels, config.classifier_dropout, name="classification_head"
         )
 
     def call(
