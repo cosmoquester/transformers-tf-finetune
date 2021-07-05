@@ -44,6 +44,11 @@ class TFBartForSequenceClassification(TFBartPretrainedModel):
             `[BatchSize, NumLabels]
     """
 
+    _keys_to_ignore_on_load_unexpected = [
+        r"model.encoder.embed_tokens.weight",
+        r"model.decoder.embed_tokens.weight",
+    ]
+
     def __init__(self, config: BartConfig, *args, **kwargs):
         super().__init__(config, *args, **kwargs)
 
