@@ -21,7 +21,7 @@ class TFBartClassificationHead(tf.keras.layers.Layer):
         self.dropout = tf.keras.layers.Dropout(pooler_dropout, name="dropout")
         self.out_proj = tf.keras.layers.Dense(num_classes, name="out_proj")
 
-    def forward(self, hidden_states: tf.Tensor):
+    def call(self, hidden_states: tf.Tensor):
         hidden_states = self.dropout(hidden_states)
         hidden_states = self.dense(hidden_states)
         hidden_states = tf.math.tanh(hidden_states)
