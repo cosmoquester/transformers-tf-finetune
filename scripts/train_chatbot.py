@@ -1,5 +1,6 @@
 import argparse
 import csv
+import random
 import sys
 import urllib.request
 from math import ceil
@@ -18,7 +19,6 @@ parser = argparse.ArgumentParser(description="Script to train Korean Chatbot con
 parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--dataset-path", default=CHATBOT_URI, help="dataset if using local file")
-parser.add_argument("--shuffle-buffer-size", type=int, default=10000)
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
 parser.add_argument("--epochs", type=int, default=3)
 parser.add_argument("--learning-rate", type=float, default=5e-5)
@@ -35,12 +35,15 @@ parser.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", 
 # fmt: on
 
 
-def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(
+    dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle: bool = False
+) -> Tuple[tf.data.Dataset, int]:
     """
     Load Chatbot Conversation dataset from local file or web
 
     :param dataset_path: local file path or file uri
     :param tokenizer: PreTrainedTokenizer for tokenizing
+    :param shuffle: whether shuffling lines or not
     :returns: conversation dataset, number of dataset
     """
     if dataset_path.startswith("https://"):
@@ -50,6 +53,8 @@ def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast) -> Tuple
         with open(dataset_path) as f:
             data = f.read()
     lines = data.splitlines()[1:]
+    if shuffle:
+        random.shuffle(lines)
 
     bos = tokenizer.bos_token
     eos = tokenizer.eos_token
@@ -111,9 +116,7 @@ def main(args: argparse.Namespace):
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
-        dataset, total_dataset_size = load_dataset(args.dataset_path, tokenizer)
-        dataset = dataset.shuffle(args.shuffle_buffer_size)
-
+        dataset, total_dataset_size = load_dataset(args.dataset_path, tokenizer, True)
         train_dataset = dataset.skip(args.num_dev_dataset).batch(args.batch_size)
         dev_dataset = dataset.take(args.num_dev_dataset).batch(args.dev_batch_size)
 

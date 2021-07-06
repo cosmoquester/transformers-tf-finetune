@@ -1,5 +1,6 @@
 import argparse
 import json
+import random
 import sys
 import urllib.request
 from math import ceil
@@ -21,7 +22,6 @@ parser.add_argument("--pretrained-model", type=str, required=True, help="transfo
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--train-dataset-path", default=KLUE_TC_TRAIN_URI, help="klue tc train dataset if using local file")
 parser.add_argument("--dev-dataset-path", default=KLUE_TC_DEV_URI, help="klue tc dev dataset if using local file")
-parser.add_argument("--shuffle-buffer-size", type=int, default=30000)
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
 parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--learning-rate", type=float, default=5e-5)
@@ -39,13 +39,15 @@ parser.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", 
 
 
 def load_dataset(
-    dataset_path: str, tokenizer: PreTrainedTokenizerFast, label2id: Dict[str, int]
+    dataset_path: str, tokenizer: PreTrainedTokenizerFast, label2id: Dict[str, int], shuffle: bool = False
 ) -> Tuple[tf.data.Dataset, int]:
     """
     Load KLUE TC dataset from local file or web
 
     :param dataset_path: local file path or file uri
     :param tokenizer: PreTrainedTokenizer for tokenizing
+    :param label2id: dictionary for mapping label to index
+    :param shuffle: whether shuffling lines or not
     :returns: KLUE TC dataset, number of dataset
     """
     if dataset_path.startswith("https://"):
@@ -54,13 +56,16 @@ def load_dataset(
     else:
         with open(dataset_path) as f:
             data = f.read()
+    examples = json.loads(data)
+    if shuffle:
+        random.shuffle(examples)
 
     bos = tokenizer.bos_token
     eos = tokenizer.eos_token
 
     sentences = []
     labels = []
-    for example in json.loads(data):
+    for example in examples:
         sentences.append(bos + example["title"] + eos)
         labels.append(label2id[example["label"]])
 
@@ -105,9 +110,7 @@ def main(args: argparse.Namespace):
         # Construct Dataset
         logger.info("[+] Load Datasets")
         label2id = {"정치": 0, "경제": 1, "사회": 2, "생활문화": 3, "세계": 4, "IT과학": 5, "스포츠": 6}
-        dataset, total_dataset_size = load_dataset(args.train_dataset_path, tokenizer, label2id)
-        dataset = dataset.shuffle(args.shuffle_buffer_size)
-
+        dataset, total_dataset_size = load_dataset(args.train_dataset_path, tokenizer, label2id, True)
         train_dataset = dataset.skip(args.num_valid_dataset).batch(args.batch_size)
         valid_dataset = dataset.take(args.num_valid_dataset).batch(args.dev_batch_size)
         dev_dataset = load_dataset(args.dev_dataset_path, tokenizer, label2id)[0].batch(args.dev_batch_size)

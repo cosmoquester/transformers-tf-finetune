@@ -1,5 +1,6 @@
 import argparse
 import csv
+import random
 import sys
 import urllib.request
 from math import ceil
@@ -22,7 +23,6 @@ parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pre
 parser.add_argument("--train-dataset-path", default=QUESTION_PAIR_TRAIN_URI, help="question pair train dataset if using local file")
 parser.add_argument("--valid-dataset-path", default=QUESTION_PAIR_VALID_URI, help="question pair validation dataset if using local file")
 parser.add_argument("--test-dataset-path", default=QUESTION_PAIR_TEST_URI, help="question pair test dataset if using local file")
-parser.add_argument("--shuffle-buffer-size", type=int, default=5000)
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
 parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--learning-rate", type=float, default=5e-5)
@@ -38,12 +38,15 @@ parser.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", 
 # fmt: on
 
 
-def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(
+    dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle: bool = False
+) -> Tuple[tf.data.Dataset, int]:
     """
     Load QuestionPair dataset from local file or web
 
     :param dataset_path: local file path or file uri
     :param tokenizer: PreTrainedTokenizer for tokenizing
+    :param shuffle: whether shuffling lines or not
     :returns: QuestionPair dataset, number of dataset
     """
     if dataset_path.startswith("https://"):
@@ -53,6 +56,8 @@ def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast) -> Tuple
         with open(dataset_path) as f:
             data = f.read()
     lines = data.splitlines()[1:]
+    if shuffle:
+        random.shuffle(lines)
 
     bos = tokenizer.bos_token
     eos = tokenizer.eos_token
@@ -104,8 +109,8 @@ def main(args: argparse.Namespace):
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
-        train_dataset, train_dataset_size = load_dataset(args.train_dataset_path, tokenizer)
-        train_dataset = train_dataset.shuffle(args.shuffle_buffer_size).batch(args.batch_size)
+        train_dataset, train_dataset_size = load_dataset(args.train_dataset_path, tokenizer, True)
+        train_dataset = train_dataset.batch(args.batch_size)
         valid_dataset = load_dataset(args.valid_dataset_path, tokenizer)[0].batch(args.dev_batch_size)
         test_dataset = load_dataset(args.test_dataset_path, tokenizer)[0].batch(args.dev_batch_size)
 
