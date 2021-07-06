@@ -84,6 +84,7 @@ def main(args: argparse.Namespace):
         logger.info(f"Set random seed to {args.seed}")
 
     # Copy config file
+    assert not tf.io.gfile.exists(args.output_path), f'output path: "{args.output_path}" is already exists!'
     tf.io.gfile.makedirs(args.output_path)
     with tf.io.gfile.GFile(path_join(args.output_path, "argument_configs.txt"), "w") as fout:
         for k, v in vars(args).items():
@@ -134,18 +135,18 @@ def main(args: argparse.Namespace):
 
         # Training
         logger.info("[+] Start training")
+        checkpoint_path = path_join(args.output_path, "best_model.ckpt")
         model.fit(
             train_dataset,
             validation_data=dev_dataset,
             epochs=args.epochs,
             callbacks=[
                 tf.keras.callbacks.ModelCheckpoint(
-                    path_join(
-                        args.output_path,
-                        "models",
-                        "model-{epoch}epoch-{val_loss:.4f}loss_{val_accuracy:.4f}acc.ckpt",
-                    ),
+                    checkpoint_path,
                     save_weights_only=True,
+                    save_best_only=True,
+                    monitor="val_accuracy",
+                    mode="max",
                     verbose=1,
                 ),
                 tf.keras.callbacks.TensorBoard(
@@ -153,6 +154,9 @@ def main(args: argparse.Namespace):
                 ),
             ],
         )
+        logger.info("[+] Load and Save Best Model")
+        model.load_weights(checkpoint_path)
+        model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
         loss, accuracy = model.evaluate(test_dataset)
