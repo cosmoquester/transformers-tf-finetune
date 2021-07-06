@@ -8,7 +8,7 @@ setup(
     version="0.0.1",
     description="Script to train hugginface transformers BART with Tensorflow 2",
     python_requires=">=3.6",
-    install_requires=["tensorflow>=2", "transformers"],
+    install_requires=["tensorflow>=2", "tensorflow-addons", "transformers"],
     url="https://github.com/cosmoquester/transformers-bart-finetune.git",
     author="Park Sangjun",
     classifiers=[
