@@ -89,8 +89,6 @@ def load_dataset(
 
 
 def main(args: argparse.Namespace):
-    args = parser.parse_args()
-
     logger = get_logger(__name__)
 
     if args.seed:
