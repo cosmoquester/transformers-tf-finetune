@@ -35,6 +35,7 @@ parser.add_argument("--tensorboard-update-freq", type=int, default=1)
 parser.add_argument("--mixed-precision", action="store_true", help="Use mixed precision FP16")
 parser.add_argument("--seed", type=int, help="Set random seed")
 parser.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", "TPU"], help="device to use (TPU or GPU or CPU)")
+parser.add_argument("--use-auth-token", action="store_true", help="use huggingface-cli credential for private model")
 # fmt: on
 
 
@@ -103,7 +104,9 @@ def main(args: argparse.Namespace):
             tf.keras.mixed_precision.experimental.set_policy(policy)
 
         logger.info("[+] Load Tokenizer")
-        tokenizer = PreTrainedTokenizerFast.from_pretrained(args.pretrained_tokenizer)
+        tokenizer = PreTrainedTokenizerFast.from_pretrained(
+            args.pretrained_tokenizer, use_auth_token=args.use_auth_token
+        )
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
@@ -114,7 +117,9 @@ def main(args: argparse.Namespace):
 
         # Model Initialize
         logger.info("[+] Model Initialize")
-        model = TFBartForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=2)
+        model = TFBartForSequenceClassification.from_pretrained(
+            args.pretrained_model, num_labels=2, use_auth_token=args.use_auth_token
+        )
         model.config.id2label = {0: "non-duplicate", 1: "duplicate"}
         model.config.label2id = {"non-duplicate": 0, "duplicate": 1}
 
