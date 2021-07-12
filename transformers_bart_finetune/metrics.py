@@ -40,6 +40,9 @@ class SpearmanCorrelationCoefficient(tf.keras.metrics.Metric):
         :param data: Input data shaped [BatchSize]
         :returns: averaged rank of each item.
         """
+        data = tf.squeeze(data)
+        tf.debugging.assert_rank(data, 1)
+
         _, index, counts = tf.unique_with_counts(tf.sort(data))
         counts = tf.cast(counts, tf.float32)
         end_numbers = tf.scan(lambda x, y: x + y, counts)
@@ -65,12 +68,6 @@ class SpearmanCorrelationCoefficient(tf.keras.metrics.Metric):
 
     def spearman_correlation_coefficient(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         """Calculate Spearman correlation coefficients"""
-        x = tf.squeeze(x)
-        y = tf.squeeze(y)
-
-        tf.debugging.assert_rank(x, 1)
-        tf.debugging.assert_rank(y, 1)
-
         x_rank = self.get_rank(x)
         y_rank = self.get_rank(y)
         return self.pearson_correlation_coefficient(x_rank, y_rank)
