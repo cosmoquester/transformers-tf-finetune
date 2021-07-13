@@ -10,6 +10,7 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from transformers import PreTrainedTokenizerFast
 
+from transformers_bart_finetune.metrics import PearsonCorrelationMetric, SpearmanCorrelationMetric
 from transformers_bart_finetune.models import TFBartForSequenceClassification
 from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
@@ -39,7 +40,9 @@ parser.add_argument("--use-auth-token", action="store_true", help="use huggingfa
 # fmt: on
 
 
-def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle: bool) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(
+    dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle: bool = False
+) -> Tuple[tf.data.Dataset, int]:
     """
     Load KLUE STS dataset from local file or web
 
@@ -64,9 +67,11 @@ def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle:
 
     sentences = []
     binary_labels = []
+    real_labels = []
     for example in examples:
         sentences.append(bos + example["sentence1"] + sep + example["sentence2"] + eos)
         binary_labels.append(int(example["labels"]["binary-label"]))
+        real_labels.append(float(example["labels"]["real-label"]))
 
     tokens = tokenizer(
         sentences,
@@ -76,7 +81,7 @@ def load_dataset(dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle:
         return_attention_mask=False,
     )["input_ids"]
 
-    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": tokens}, tf.one_hot(binary_labels, 2)))
+    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": tokens}, (binary_labels, real_labels)))
     return dataset, len(binary_labels)
 
 
@@ -116,10 +121,8 @@ def main(args: argparse.Namespace):
         # Model Initialize
         logger.info("[+] Model Initialize")
         model = TFBartForSequenceClassification.from_pretrained(
-            args.pretrained_model, num_labels=2, use_auth_token=args.use_auth_token
+            args.pretrained_model, num_labels=1, use_auth_token=args.use_auth_token
         )
-        model.config.id2label = {"non-similar": 0, "similar": 1}
-        model.config.label2id = {0: "non-similar", 1: "similar"}
 
         # Model Compile
         logger.info("[+] Model compiling complete")
@@ -135,10 +138,16 @@ def main(args: argparse.Namespace):
                     args.warmup_steps,
                 )
             ),
-            loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+            loss=[[tf.keras.losses.BinaryCrossentropy(from_logits=True)], None],
             metrics=[
-                tf.keras.metrics.CategoricalAccuracy(name="accuracy"),
-                tfa.metrics.F1Score(model.config.num_labels, "macro"),
+                (
+                    tf.keras.metrics.BinaryAccuracy(name="accuracy"),
+                    tfa.metrics.F1Score(model.config.num_labels, "macro", threshold=1e-12),
+                ),
+                (
+                    PearsonCorrelationMetric(name="pearson_coef"),
+                    SpearmanCorrelationMetric(name="spearman_coef"),
+                ),
             ],
         )
 
@@ -154,7 +163,7 @@ def main(args: argparse.Namespace):
                     checkpoint_path,
                     save_weights_only=True,
                     save_best_only=True,
-                    monitor="val_f1_score",
+                    monitor="val_pearson_coef",
                     mode="max",
                     verbose=1,
                 ),
@@ -168,8 +177,14 @@ def main(args: argparse.Namespace):
         model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
-        loss, accuracy, f1 = model.evaluate(dev_dataset)
-        logger.info(f"[+] Dev loss: {loss:.4f}, Dev Accuracy: {accuracy:.4f}, Dev F1: {f1:.4f}")
+        loss, accuracy, f1_score, pearson_score, spearman_score = model.evaluate(dev_dataset)
+        logger.info(
+            f"[+] Dev loss: {loss:.4f}, "
+            f"Dev Accuracy: {accuracy:.4f}, "
+            f"Dev F1: {f1_score:.4f}, "
+            f"Dev Pearson: {pearson_score:.4f}, "
+            f"Dev Spearman: {spearman_score:.4f}"
+        )
 
 
 if __name__ == "__main__":
