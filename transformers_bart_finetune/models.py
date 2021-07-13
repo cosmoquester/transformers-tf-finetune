@@ -228,3 +228,13 @@ class TFBartForSequenceMultiClassification(TFBartPretrainedModel):
         if self.keys is not None:
             outputs = {key: output for key, output in zip(self.keys, outputs)}
         return outputs
+
+
+class TFBartSTSWrapper(TFBartForSequenceClassification):
+    """Wrapper for STS task"""
+
+    def __init__(self, config: BartConfig, *args, **kwargs):
+        super().__init__(config, *args, **kwargs)
+
+    def call(self, *args, **kwargs):
+        output = super()(*args, **kwargs)
