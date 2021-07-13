@@ -1,7 +1,11 @@
 import pytest
 import tensorflow as tf
 
-from transformers_bart_finetune.metrics import SpearmanCorrelationCoefficient
+from transformers_bart_finetune.metrics import (
+    get_rank,
+    pearson_correlation_coefficient,
+    spearman_correlation_coefficient,
+)
 
 
 @pytest.mark.parametrize(
@@ -14,8 +18,7 @@ from transformers_bart_finetune.metrics import SpearmanCorrelationCoefficient
     ],
 )
 def test_get_rank(x, true_rank):
-    spearman_correlation = SpearmanCorrelationCoefficient()
-    tf.debugging.assert_equal(spearman_correlation.get_rank(x), true_rank)
+    tf.debugging.assert_equal(get_rank(x), true_rank)
 
 
 @pytest.mark.parametrize(
@@ -27,8 +30,7 @@ def test_get_rank(x, true_rank):
     ],
 )
 def test_pearson_correlation_coefficient(x, y, true_coef):
-    spearman_correlation = SpearmanCorrelationCoefficient()
-    pred_coef = spearman_correlation.pearson_correlation_coefficient(x, y)
+    pred_coef = pearson_correlation_coefficient(x, y)
     tf.debugging.assert_near(pred_coef, true_coef)
 
 
@@ -41,6 +43,5 @@ def test_pearson_correlation_coefficient(x, y, true_coef):
     ],
 )
 def test_spearman_correlation_coefficient(x, y, true_coef):
-    spearman_correlation = SpearmanCorrelationCoefficient()
-    pred_coef = spearman_correlation.spearman_correlation_coefficient(x, y)
+    pred_coef = spearman_correlation_coefficient(x, y)
     tf.debugging.assert_near(pred_coef, true_coef)
