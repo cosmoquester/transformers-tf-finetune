@@ -34,15 +34,16 @@ def pearson_correlation_coefficient(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
     :param y: Input Tensor shaped [BatchSize]
     :returns: pearson correlation scalar tensor
     """
-    x = tf.cast(x, tf.float32)
-    y = tf.cast(y, tf.float32)
+    x = tf.squeeze(tf.cast(x, tf.float32))
+    y = tf.squeeze(tf.cast(y, tf.float32))
 
-    x_deviation = x - tf.reduce_mean(x, axis=-1)
-    y_deviation = y - tf.reduce_mean(y, axis=-1)
+    tf.debugging.assert_rank(x, 1)
+    tf.debugging.assert_rank(y, 1)
 
-    pearson_corr = tf.reduce_sum(x_deviation * y_deviation, axis=-1) / (
-        tf.norm(x_deviation, axis=-1) * tf.norm(y_deviation, axis=-1)
-    )
+    x_deviation = x - tf.reduce_mean(x)
+    y_deviation = y - tf.reduce_mean(y)
+
+    pearson_corr = tf.reduce_sum(x_deviation * y_deviation) / (tf.norm(x_deviation) * tf.norm(y_deviation))
     return pearson_corr
 
 
