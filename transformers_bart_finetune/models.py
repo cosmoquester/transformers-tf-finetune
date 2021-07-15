@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Union
 
 import tensorflow as tf
 from transformers import BartConfig, TFBartPretrainedModel
-from transformers.modeling_tf_outputs import TFBaseModelOutput
+from transformers.modeling_tf_outputs import TFBaseModelOutput, TFSeq2SeqSequenceClassifierOutput
 from transformers.modeling_tf_utils import input_processing
 from transformers.models.bart.modeling_tf_bart import TFBartMainLayer
 
@@ -101,6 +101,9 @@ class TFBartForSequenceClassification(TFBartPretrainedModel):
             kwargs_call=kwargs,
         )
 
+        if inputs["decoder_input_ids"] is None and inputs["input_ids"] is not None:
+            inputs["decoder_input_ids"] = inputs["input_ids"]
+
         outputs = self.model(
             inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
@@ -120,7 +123,24 @@ class TFBartForSequenceClassification(TFBartPretrainedModel):
             training=inputs["training"],
         )
         last_hidden_state = outputs.last_hidden_state[:, -1, :]
-        return self.classification_head(last_hidden_state)
+
+        logits = self.classification_head(hidden_states=last_hidden_state)
+        loss = None if inputs["labels"] is None else self.compute_loss(labels=inputs["labels"], logits=logits)
+
+        if not inputs["return_dict"]:
+            output = (logits,) + outputs[2:]
+            return ((loss,) + output) if loss is not None else output
+
+        return TFSeq2SeqSequenceClassifierOutput(
+            loss=loss,
+            logits=logits,
+            past_key_values=outputs.past_key_values,
+            decoder_hidden_states=outputs.decoder_hidden_states,
+            decoder_attentions=outputs.decoder_attentions,
+            encoder_last_hidden_state=outputs.encoder_last_hidden_state,
+            encoder_hidden_states=outputs.encoder_hidden_states,
+            encoder_attentions=outputs.encoder_attentions,
+        )
 
 
 class TFBartForSequenceMultiClassification(TFBartPretrainedModel):
@@ -204,6 +224,9 @@ class TFBartForSequenceMultiClassification(TFBartPretrainedModel):
             kwargs_call=kwargs,
         )
 
+        if inputs["decoder_input_ids"] is None and inputs["input_ids"] is not None:
+            inputs["decoder_input_ids"] = inputs["input_ids"]
+
         outputs = self.model(
             inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
@@ -228,13 +251,3 @@ class TFBartForSequenceMultiClassification(TFBartPretrainedModel):
         if self.keys is not None:
             outputs = {key: output for key, output in zip(self.keys, outputs)}
         return outputs
-
-
-class TFBartSTSWrapper(TFBartForSequenceClassification):
-    """Wrapper for STS task"""
-
-    def __init__(self, config: BartConfig, *args, **kwargs):
-        super().__init__(config, *args, **kwargs)
-
-    def call(self, *args, **kwargs):
-        output = super()(*args, **kwargs)
