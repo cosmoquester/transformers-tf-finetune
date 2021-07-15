@@ -81,7 +81,7 @@ def load_dataset(
         return_attention_mask=False,
     )["input_ids"]
 
-    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": tokens}, (binary_labels, real_labels)))
+    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": tokens}, {"logits": (binary_labels, real_labels)}))
     return dataset, len(binary_labels)
 
 
@@ -138,17 +138,22 @@ def main(args: argparse.Namespace):
                     args.warmup_steps,
                 )
             ),
-            loss=[[tf.keras.losses.BinaryCrossentropy(from_logits=True)], None],
-            metrics=[
-                (
-                    tf.keras.metrics.BinaryAccuracy(name="accuracy"),
-                    tfa.metrics.F1Score(model.config.num_labels, "macro", threshold=1e-12),
-                ),
-                (
-                    PearsonCorrelationMetric(name="pearson_coef"),
-                    SpearmanCorrelationMetric(name="spearman_coef"),
-                ),
-            ],
+            loss={
+                "logits": [[tf.keras.losses.BinaryCrossentropy(from_logits=True)], None],
+                "encoder_last_hidden_state": None,
+            },
+            metrics={
+                "logits": [
+                    (
+                        tf.keras.metrics.BinaryAccuracy(name="accuracy"),
+                        tfa.metrics.F1Score(model.config.num_labels, "macro", threshold=1e-12),
+                    ),
+                    (
+                        PearsonCorrelationMetric(name="pearson_coef"),
+                        SpearmanCorrelationMetric(name="spearman_coef"),
+                    ),
+                ]
+            },
         )
 
         # Training
@@ -163,7 +168,7 @@ def main(args: argparse.Namespace):
                     checkpoint_path,
                     save_weights_only=True,
                     save_best_only=True,
-                    monitor="val_pearson_coef",
+                    monitor="val_logits_pearson_coef",
                     mode="max",
                     verbose=1,
                 ),
@@ -177,7 +182,7 @@ def main(args: argparse.Namespace):
         model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
-        loss, accuracy, f1_score, pearson_score, spearman_score = model.evaluate(dev_dataset)
+        _, loss, accuracy, f1_score, pearson_score, spearman_score = model.evaluate(dev_dataset)
         logger.info(
             f"[+] Dev loss: {loss:.4f}, "
             f"Dev Accuracy: {accuracy:.4f}, "
