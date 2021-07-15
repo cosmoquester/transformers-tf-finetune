@@ -36,5 +36,5 @@ def test_classification_model(config: BartConfig):
     batch_size = 3
     sequence_length = 13
     input = tf.random.uniform([batch_size, sequence_length], 0, config.vocab_size, dtype=tf.int32)
-    output = model({"input_ids": input})
+    output = model({"input_ids": input})["logits"]
     tf.debugging.assert_equal(tf.shape(output), [batch_size, config.num_labels])
