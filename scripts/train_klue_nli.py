@@ -138,8 +138,11 @@ def main(args: argparse.Namespace):
                     args.warmup_steps,
                 )
             ),
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")],
+            loss={
+                "logits": tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                "encoder_last_hidden_state": None,
+            },
+            metrics={"logits": [tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")]},
         )
 
         # Training
@@ -154,7 +157,7 @@ def main(args: argparse.Namespace):
                     checkpoint_path,
                     save_weights_only=True,
                     save_best_only=True,
-                    monitor="val_accuracy",
+                    monitor="val_logits_accuracy",
                     mode="max",
                     verbose=1,
                 ),
@@ -168,7 +171,7 @@ def main(args: argparse.Namespace):
         model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
-        loss, accuracy = model.evaluate(dev_dataset)
+        _, loss, accuracy = model.evaluate(dev_dataset)
         logger.info(f"[+] Dev loss: {loss:.4f}, Dev Accuracy: {accuracy:.4f}")
 
 

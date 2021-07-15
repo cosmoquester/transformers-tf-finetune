@@ -59,8 +59,8 @@ def load_dataset(
     if shuffle:
         random.shuffle(lines)
 
-    # bos = tokenizer.bos_token
-    # eos = tokenizer.eos_token
+    bos = tokenizer.bos_token
+    eos = tokenizer.eos_token
 
     bias_label2id = {"none": 0, "gender": 1, "others": 2}
     hate_label2id = {"none": 0, "hate": 1, "offensive": 2}
