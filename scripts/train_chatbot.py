@@ -10,6 +10,7 @@ import tensorflow as tf
 from transformers import PreTrainedTokenizerFast, TFBartForConditionalGeneration
 
 from transformers_bart_finetune.losses import SparseCategoricalCrossentropy
+from transformers_bart_finetune.metrics import SparseCategoricalAccuracy
 from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 CHATBOT_URI = "https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData%20.csv"
@@ -20,14 +21,14 @@ parser.add_argument("--pretrained-model", type=str, required=True, help="transfo
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--dataset-path", default=CHATBOT_URI, help="dataset if using local file")
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
-parser.add_argument("--epochs", type=int, default=3)
-parser.add_argument("--learning-rate", type=float, default=5e-5)
+parser.add_argument("--epochs", type=int, default=10)
+parser.add_argument("--learning-rate", type=float, default=1e-4)
 parser.add_argument("--min-learning-rate", type=float, default=1e-5)
 parser.add_argument("--warmup-rate", type=float, default=0.06)
 parser.add_argument("--warmup-steps", type=int)
 parser.add_argument("--batch-size", type=int, default=256)
 parser.add_argument("--dev-batch-size", type=int, default=256)
-parser.add_argument("--num-dev-dataset", type=int, default=2000)
+parser.add_argument("--num-dev-dataset", type=int, default=1000)
 parser.add_argument("--tensorboard-update-freq", type=int, default=1)
 parser.add_argument("--mixed-precision", action="store_true", help="Use mixed precision FP16")
 parser.add_argument("--seed", type=int, help="Set random seed")
@@ -85,7 +86,9 @@ def load_dataset(
         return_attention_mask=False,
     )["input_ids"]
 
-    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": input_tokens}, target_tokens))
+    dataset = tf.data.Dataset.from_tensor_slices(
+        ({"input_ids": input_tokens, "decoder_input_ids": target_tokens[:, :-1]}, target_tokens[:, 1:])
+    )
     return dataset, len(answers)
 
 
@@ -145,7 +148,7 @@ def main(args: argparse.Namespace):
                 "logits": SparseCategoricalCrossentropy(from_logits=True, ignore_index=tokenizer.pad_token_id),
                 "encoder_last_hidden_state": None,
             },
-            metrics={"logits": tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")},
+            metrics={"logits": SparseCategoricalAccuracy(ignore_index=tokenizer.pad_token_id, name="accuracy")},
         )
 
         # Training
