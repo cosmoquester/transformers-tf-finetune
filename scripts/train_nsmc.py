@@ -7,7 +7,7 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-from transformers import PreTrainedTokenizerFast
+from transformers import AdamWeightDecay, PreTrainedTokenizerFast
 
 from transformers_bart_finetune.models import TFBartForSequenceClassification
 from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
@@ -126,14 +126,16 @@ def main(args: argparse.Namespace):
         train_dataset_size = total_dataset_size - args.num_dev_dataset
         total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
         model.compile(
-            optimizer=tf.optimizers.Adam(
+            optimizer=AdamWeightDecay(
                 LRScheduler(
                     total_steps,
                     args.learning_rate,
                     args.min_learning_rate,
                     args.warmup_rate,
                     args.warmup_steps,
-                )
+                ),
+                weight_decay_rate=0.01,
+                exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
             ),
             loss={
                 "logits": tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
