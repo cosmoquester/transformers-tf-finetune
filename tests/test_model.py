@@ -2,7 +2,11 @@ import pytest
 import tensorflow as tf
 from transformers import BartConfig
 
-from transformers_bart_finetune.models import TFBartClassificationHead, TFBartForSequenceClassification
+from transformers_bart_finetune.models import (
+    SemanticTextualSimailarityWrapper,
+    TFBartClassificationHead,
+    TFBartForSequenceClassification,
+)
 
 
 @pytest.fixture(scope="module")
@@ -38,3 +42,17 @@ def test_classification_model(config: BartConfig):
     input = tf.random.uniform([batch_size, sequence_length], 0, config.vocab_size, dtype=tf.int32)
     output = model({"input_ids": input})["logits"]
     tf.debugging.assert_equal(tf.shape(output), [batch_size, config.num_labels])
+
+
+def test_semantic_textual_simailarity_wrapper(config: BartConfig):
+    model = SemanticTextualSimailarityWrapper(config)
+
+    batch_size = 3
+    sequence_length = 13
+    input1 = tf.random.uniform([batch_size, sequence_length], 0, config.vocab_size, dtype=tf.int32)
+    input2 = tf.random.uniform([batch_size, sequence_length], 0, config.vocab_size, dtype=tf.int32)
+    output = model((input1, input2))
+
+    tf.debugging.assert_equal(tf.shape(output), [batch_size])
+    tf.debugging.assert_less_equal(output, 1.0)
+    tf.debugging.assert_greater_equal(output, -1.0)
