@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Union
 
 import tensorflow as tf
-from transformers import BartConfig, TFBartPretrainedModel
+from transformers import BartConfig, TFBartModel, TFBartPretrainedModel
 from transformers.modeling_tf_outputs import TFBaseModelOutput, TFSeq2SeqSequenceClassifierOutput
 from transformers.modeling_tf_utils import input_processing
 from transformers.models.bart.modeling_tf_bart import TFBartMainLayer
@@ -251,3 +251,35 @@ class TFBartForSequenceMultiClassification(TFBartPretrainedModel):
         if self.keys is not None:
             outputs = {key: output for key, output in zip(self.keys, outputs)}
         return outputs
+
+
+class SemanticTextualSimailarityWrapper(tf.keras.Model):
+    """
+    TFBart model for semantic textual similarity task.
+
+    Arguments:
+        config: BartConfig, bart config instance to initialize new model
+        model: TFBartModel, tf classification model.
+
+    Output Shape:
+        2D tensor with shape:
+            `[BatchSize, 1]`
+    """
+
+    def __init__(self, config: BartConfig = None, model: TFBartModel = None, *args, **kwargs):
+        super().__init__(*args, **kwargs, name="semantic_textual_simailarity")
+
+        self.model = TFBartModel(config) if model is None else model
+
+    def call(self, inputs, training=None, **kwargs):
+        input_ids1, input_ids2 = inputs
+
+        embedding1 = self.model(input_ids=input_ids1).last_hidden_state[:, -1, :]
+        embedding2 = self.model(input_ids=input_ids2).last_hidden_state[:, -1, :]
+
+        return self.cosine_simailarity(embedding1, embedding2)
+
+    def cosine_simailarity(self, embedding1, embedding2):
+        dot_product = tf.reduce_sum(embedding1 * embedding2, axis=-1)
+        norm = tf.norm(embedding1, axis=-1) * tf.norm(embedding2, axis=-1)
+        return dot_product / norm
