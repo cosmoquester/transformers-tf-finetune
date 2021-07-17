@@ -7,11 +7,15 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-import tensorflow_addons as tfa
-from transformers import PreTrainedTokenizerFast
+from transformers import PreTrainedTokenizerFast, TFBartModel
 
-from transformers_bart_finetune.metrics import PearsonCorrelationMetric, SpearmanCorrelationMetric
-from transformers_bart_finetune.models import TFBartForSequenceClassification
+from transformers_bart_finetune.metrics import (
+    PearsonCorrelationMetric,
+    SpearmanCorrelationMetric,
+    pearson_correlation_coefficient,
+    spearman_correlation_coefficient,
+)
+from transformers_bart_finetune.models import SemanticTextualSimailarityWrapper
 from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 # fmt: off
@@ -26,13 +30,13 @@ parser.add_argument("--train-dataset-path", default=KORSTS_TRAIN_URI, help="kor 
 parser.add_argument("--dev-dataset-path", default=KORSTS_DEV_URI, help="kor sts dev dataset if using local file")
 parser.add_argument("--test-dataset-path", default=KORSTS_TEST_URI, help="kor sts test dataset if using local file")
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
-parser.add_argument("--epochs", type=int, default=10)
+parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--learning-rate", type=float, default=5e-5)
 parser.add_argument("--min-learning-rate", type=float, default=1e-5)
 parser.add_argument("--warmup-rate", type=float, default=0.06)
 parser.add_argument("--warmup-steps", type=int)
 parser.add_argument("--batch-size", type=int, default=128)
-parser.add_argument("--dev-batch-size", type=int, default=128)
+parser.add_argument("--dev-batch-size", type=int, default=512)
 parser.add_argument("--tensorboard-update-freq", type=int, default=1)
 parser.add_argument("--mixed-precision", action="store_true", help="Use mixed precision FP16")
 parser.add_argument("--seed", type=int, help="Set random seed")
@@ -64,27 +68,32 @@ def load_dataset(
 
     bos = tokenizer.bos_token
     eos = tokenizer.eos_token
-    sep = tokenizer.sep_token
 
-    sentences = []
-    binary_labels = []
-    soft_labels = []
+    sentences1 = []
+    sentences2 = []
+    normalized_labels = []
     for *_, score, sentence1, sentence2 in csv.reader(lines, delimiter="\t", quoting=csv.QUOTE_NONE):
-        score = float(score)
-        sentences.append(bos + sentence1 + sep + sentence2 + eos)
-        binary_labels.append(int(score > 2.5))
-        soft_labels.append(score)
+        sentences1.append(bos + sentence1 + eos)
+        sentences2.append(bos + sentence2 + eos)
+        normalized_labels.append(float(score) / 5.0)
 
-    tokens = tokenizer(
-        sentences,
+    tokens1 = tokenizer(
+        sentences1,
+        padding=True,
+        return_tensors="tf",
+        return_token_type_ids=False,
+        return_attention_mask=False,
+    )["input_ids"]
+    tokens2 = tokenizer(
+        sentences2,
         padding=True,
         return_tensors="tf",
         return_token_type_ids=False,
         return_attention_mask=False,
     )["input_ids"]
 
-    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": tokens}, {"logits": (binary_labels, soft_labels)}))
-    return dataset, len(binary_labels)
+    dataset = tf.data.Dataset.from_tensor_slices(((tokens1, tokens2), normalized_labels))
+    return dataset, len(normalized_labels)
 
 
 def main(args: argparse.Namespace):
@@ -122,45 +131,33 @@ def main(args: argparse.Namespace):
 
         # Model Initialize
         logger.info("[+] Model Initialize")
-        model = TFBartForSequenceClassification.from_pretrained(
-            args.pretrained_model, num_labels=1, use_auth_token=args.use_auth_token
-        )
+        model = TFBartModel.from_pretrained(args.pretrained_model, use_auth_token=args.use_auth_token)
+        model_sts = SemanticTextualSimailarityWrapper(model=model)
 
         # Model Compile
         logger.info("[+] Model compiling complete")
         total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
-        model.compile(
-            optimizer=tf.optimizers.Adam(
+        model_sts.compile(
+            optimizer=tf.keras.optimizers.Adam(
                 LRScheduler(
                     total_steps,
                     args.learning_rate,
                     args.min_learning_rate,
                     args.warmup_rate,
                     args.warmup_steps,
-                )
+                ),
             ),
-            loss={
-                "logits": [[tf.keras.losses.BinaryCrossentropy(from_logits=True)], None],
-                "encoder_last_hidden_state": None,
-            },
-            metrics={
-                "logits": [
-                    (
-                        tf.keras.metrics.BinaryAccuracy(name="accuracy"),
-                        tfa.metrics.F1Score(model.config.num_labels, "macro", threshold=1e-12),
-                    ),
-                    (
-                        PearsonCorrelationMetric(name="pearson_coef"),
-                        SpearmanCorrelationMetric(name="spearman_coef"),
-                    ),
-                ]
-            },
+            loss=tf.keras.losses.MeanSquaredError(),
+            metrics=[
+                PearsonCorrelationMetric(name="pearson_coef"),
+                SpearmanCorrelationMetric(name="spearman_coef"),
+            ],
         )
 
         # Training
         logger.info("[+] Start training")
         checkpoint_path = path_join(args.output_path, "best_model.ckpt")
-        model.fit(
+        model_sts.fit(
             train_dataset,
             validation_data=dev_dataset,
             epochs=args.epochs,
@@ -169,7 +166,7 @@ def main(args: argparse.Namespace):
                     checkpoint_path,
                     save_weights_only=True,
                     save_best_only=True,
-                    monitor="val_logits_spearman_coef",
+                    monitor="val_spearman_coef",
                     mode="max",
                     verbose=1,
                 ),
@@ -180,17 +177,19 @@ def main(args: argparse.Namespace):
         )
         logger.info("[+] Load and Save Best Model")
         model.load_weights(checkpoint_path)
-        model.save_pretrained(path_join(args.output_path, "pretrained_model"))
+        model_sts.model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
-        _, loss, accuracy, f1_score, pearson_score, spearman_score = model.evaluate(test_dataset)
-        logger.info(
-            f"[+] Dev loss: {loss:.4f}, "
-            f"Dev Accuracy: {accuracy:.4f}, "
-            f"Dev F1: {f1_score:.4f}, "
-            f"Dev Pearson: {pearson_score:.4f}, "
-            f"Dev Spearman: {spearman_score:.4f}"
-        )
+        preds = []
+        labels = []
+        for inputs, label in test_dataset:
+            pred = model_sts(inputs, training=False)
+            preds.extend(pred.numpy())
+            labels.extend(label.numpy())
+
+        pearson_score = pearson_correlation_coefficient(labels, preds)
+        spearman_score = spearman_correlation_coefficient(labels, preds)
+        logger.info(f"[+] Dev Pearson: {pearson_score:.4f}, Dev Spearman: {spearman_score:.4f}")
 
 
 if __name__ == "__main__":
