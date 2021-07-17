@@ -7,7 +7,7 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-from transformers import PreTrainedTokenizerFast
+from transformers import AdamWeightDecay, PreTrainedTokenizerFast
 
 from transformers_bart_finetune.models import TFBartForSequenceMultiClassification
 from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
@@ -22,13 +22,13 @@ parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pre
 parser.add_argument("--train-dataset-path", default=HATESPEECH_TRAIN_URI, help="hate speech train dataset if using local file")
 parser.add_argument("--dev-dataset-path", default=HATESPEECH_DEV_URI, help="hate speech test dataset if using local file")
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
-parser.add_argument("--epochs", type=int, default=10)
+parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--learning-rate", type=float, default=5e-5)
 parser.add_argument("--min-learning-rate", type=float, default=1e-5)
 parser.add_argument("--warmup-rate", type=float, default=0.06)
 parser.add_argument("--warmup-steps", type=int)
-parser.add_argument("--batch-size", type=int, default=256)
-parser.add_argument("--dev-batch-size", type=int, default=256)
+parser.add_argument("--batch-size", type=int, default=128)
+parser.add_argument("--dev-batch-size", type=int, default=512)
 parser.add_argument("--num-valid-dataset", type=int, default=500)
 parser.add_argument("--tensorboard-update-freq", type=int, default=1)
 parser.add_argument("--mixed-precision", action="store_true", help="Use mixed precision FP16")
@@ -129,14 +129,16 @@ def main(args: argparse.Namespace):
         train_dataset_size = total_dataset_size - args.num_valid_dataset
         total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
         model.compile(
-            optimizer=tf.optimizers.Adam(
+            optimizer=AdamWeightDecay(
                 LRScheduler(
                     total_steps,
                     args.learning_rate,
                     args.min_learning_rate,
                     args.warmup_rate,
                     args.warmup_steps,
-                )
+                ),
+                weight_decay_rate=0.01,
+                exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
             ),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")],
