@@ -36,6 +36,7 @@ parser.add_argument("--mixed-precision", action="store_true", help="Use mixed pr
 parser.add_argument("--seed", type=int, help="Set random seed")
 parser.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", "TPU"], help="device to use (TPU or GPU or CPU)")
 parser.add_argument("--use-auth-token", action="store_true", help="use huggingface-cli credential for private model")
+parser.add_argument("--from-pytorch", action="store_true", help="load from pytorch weight")
 # fmt: on
 
 
@@ -118,7 +119,7 @@ def main(args: argparse.Namespace):
         # Model Initialize
         logger.info("[+] Model Initialize")
         model = TFBartForSequenceClassification.from_pretrained(
-            args.pretrained_model, num_labels=2, use_auth_token=args.use_auth_token
+            args.pretrained_model, num_labels=2, use_auth_token=args.use_auth_token, from_pt=args.from_pytorch
         )
         model.config.id2label = {0: "non-duplicate", 1: "duplicate"}
         model.config.label2id = {"non-duplicate": 0, "duplicate": 1}
