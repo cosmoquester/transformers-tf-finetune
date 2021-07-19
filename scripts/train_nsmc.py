@@ -7,7 +7,7 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-from transformers import AdamWeightDecay, PreTrainedTokenizerFast
+from transformers import AdamWeightDecay, AutoTokenizer
 
 from transformers_bart_finetune.models import TFBartForSequenceClassification
 from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
@@ -39,9 +39,7 @@ parser.add_argument("--from-pytorch", action="store_true", help="load from pytor
 # fmt: on
 
 
-def load_dataset(
-    dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle: bool = False
-) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = False) -> Tuple[tf.data.Dataset, int]:
     """
     Load NSMC dataset from local file or web
 
@@ -103,9 +101,7 @@ def main(args: argparse.Namespace):
             tf.keras.mixed_precision.experimental.set_policy(policy)
 
         logger.info("[+] Load Tokenizer")
-        tokenizer = PreTrainedTokenizerFast.from_pretrained(
-            args.pretrained_tokenizer, use_auth_token=args.use_auth_token
-        )
+        tokenizer = AutoTokenizer.from_pretrained(args.pretrained_tokenizer, use_auth_token=args.use_auth_token)
 
         # Construct Dataset
         logger.info("[+] Load Datasets")

@@ -7,7 +7,7 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-from transformers import PreTrainedTokenizerFast, TFBartForConditionalGeneration
+from transformers import AutoTokenizer, TFBartForConditionalGeneration
 
 from transformers_bart_finetune.losses import SparseCategoricalCrossentropy
 from transformers_bart_finetune.metrics import SparseCategoricalAccuracy
@@ -38,9 +38,7 @@ parser.add_argument("--from-pytorch", action="store_true", help="load from pytor
 # fmt: on
 
 
-def load_dataset(
-    dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle: bool = False
-) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = False) -> Tuple[tf.data.Dataset, int]:
     """
     Load Chatbot Conversation dataset from local file or web
 
@@ -115,9 +113,7 @@ def main(args: argparse.Namespace):
             tf.keras.mixed_precision.experimental.set_policy(policy)
 
         logger.info("[+] Load Tokenizer")
-        tokenizer = PreTrainedTokenizerFast.from_pretrained(
-            args.pretrained_tokenizer, use_auth_token=args.use_auth_token
-        )
+        tokenizer = AutoTokenizer.from_pretrained(args.pretrained_tokenizer, use_auth_token=args.use_auth_token)
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
