@@ -7,7 +7,7 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-from transformers import PreTrainedTokenizerFast, TFBartModel
+from transformers import AutoTokenizer, TFBartModel
 
 from transformers_bart_finetune.metrics import (
     PearsonCorrelationMetric,
@@ -45,9 +45,7 @@ parser.add_argument("--from-pytorch", action="store_true", help="load from pytor
 # fmt: on
 
 
-def load_dataset(
-    dataset_path: str, tokenizer: PreTrainedTokenizerFast, shuffle: bool = False
-) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = False) -> Tuple[tf.data.Dataset, int]:
     """
     Load KLUE STS dataset from local file or web
 
@@ -121,9 +119,7 @@ def main(args: argparse.Namespace):
             tf.keras.mixed_precision.experimental.set_policy(policy)
 
         logger.info("[+] Load Tokenizer")
-        tokenizer = PreTrainedTokenizerFast.from_pretrained(
-            args.pretrained_tokenizer, use_auth_token=args.use_auth_token
-        )
+        tokenizer = AutoTokenizer.from_pretrained(args.pretrained_tokenizer, use_auth_token=args.use_auth_token)
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
