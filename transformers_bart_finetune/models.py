@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Union
 
 import tensorflow as tf
-from transformers import BartConfig, TFBartModel, TFBartPretrainedModel
+from transformers import BartConfig, TFAutoModel, TFBartPretrainedModel
 from transformers.modeling_tf_outputs import TFBaseModelOutput, TFSeq2SeqSequenceClassifierOutput
 from transformers.modeling_tf_utils import input_processing
 from transformers.models.bart.modeling_tf_bart import TFBartMainLayer
@@ -255,21 +255,20 @@ class TFBartForSequenceMultiClassification(TFBartPretrainedModel):
 
 class SemanticTextualSimailarityWrapper(tf.keras.Model):
     """
-    TFBart model for semantic textual similarity task.
+    Tensorflow model for semantic textual similarity task.
 
     Arguments:
-        config: BartConfig, bart config instance to initialize new model
-        model: TFBartModel, tf classification model.
+        model: TFAutoModel, model instance being capable of TFAutomodel.
 
     Output Shape:
         2D tensor with shape:
             `[BatchSize, 1]`
     """
 
-    def __init__(self, config: BartConfig = None, model: TFBartModel = None, *args, **kwargs):
+    def __init__(self, model: TFAutoModel, *args, **kwargs):
         super().__init__(*args, **kwargs, name="semantic_textual_simailarity")
 
-        self.model = TFBartModel(config) if model is None else model
+        self.model = model
 
     def call(self, inputs, training=None, **kwargs):
         input_ids1, input_ids2 = inputs
