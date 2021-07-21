@@ -7,7 +7,7 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-from transformers import AutoTokenizer, TFBartModel
+from transformers import AutoTokenizer, TFAutoModel
 
 from transformers_bart_finetune.metrics import (
     PearsonCorrelationMetric,
@@ -65,8 +65,8 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     if shuffle:
         random.shuffle(lines)
 
-    bos = tokenizer.bos_token
-    eos = tokenizer.eos_token
+    bos = tokenizer.bos_token or tokenizer.cls_token
+    eos = tokenizer.eos_token or tokenizer.sep_token
 
     sentences1 = []
     sentences2 = []
@@ -128,7 +128,7 @@ def main(args: argparse.Namespace):
 
         # Model Initialize
         logger.info("[+] Model Initialize")
-        model = TFBartModel.from_pretrained(
+        model = TFAutoModel.from_pretrained(
             args.pretrained_model, use_auth_token=args.use_auth_token, from_pt=args.from_pytorch
         )
         model_sts = SemanticTextualSimailarityWrapper(model=model)
