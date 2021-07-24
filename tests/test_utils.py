@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from transformers_bart_finetune.utils import LRScheduler
+from transformers_tf_finetune.utils import LRScheduler
 
 
 @pytest.mark.parametrize(

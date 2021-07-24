@@ -2,7 +2,7 @@ import pytest
 import tensorflow as tf
 from transformers import BartConfig, TFBartModel
 
-from transformers_bart_finetune.models import (
+from transformers_tf_finetune.models import (
     SemanticTextualSimailarityWrapper,
     TFBartClassificationHead,
     TFBartForSequenceClassification,

@@ -9,8 +9,8 @@ from typing import Tuple
 import tensorflow as tf
 from transformers import AdamWeightDecay, AutoTokenizer
 
-from transformers_bart_finetune.models import TFBartForSequenceMultiClassification
-from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
+from transformers_tf_finetune.models import TFBartForSequenceMultiClassification
+from transformers_tf_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 HATESPEECH_TRAIN_URI = "https://raw.githubusercontent.com/kocohub/korean-hate-speech/master/labeled/train.tsv"
 HATESPEECH_DEV_URI = "https://raw.githubusercontent.com/kocohub/korean-hate-speech/master/labeled/dev.tsv"

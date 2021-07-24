@@ -9,7 +9,7 @@ from typing import Tuple
 import tensorflow as tf
 from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
 
-from transformers_bart_finetune.utils import (
+from transformers_tf_finetune.utils import (
     LRScheduler,
     get_device_strategy,
     get_logger,
