@@ -7,10 +7,18 @@ from math import ceil
 from typing import Tuple
 
 import tensorflow as tf
-from transformers import AdamWeightDecay, AutoTokenizer
+from transformers import AdamWeightDecay, AutoTokenizer, TFAutoModelForSequenceClassification
 
-from transformers_bart_finetune.models import TFBartForSequenceClassification
-from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
+from transformers_bart_finetune.utils import (
+    LRScheduler,
+    get_device_strategy,
+    get_logger,
+    path_join,
+    set_random_seed,
+    tfbart_sequence_classifier_to_transformers,
+)
+
+tfbart_sequence_classifier_to_transformers()
 
 NSMC_TRAIN_URI = "https://raw.githubusercontent.com/e9t/nsmc/master/ratings_train.txt"
 NSMC_TEST_URI = "https://raw.githubusercontent.com/e9t/nsmc/master/ratings_test.txt"
@@ -58,13 +66,13 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     if shuffle:
         random.shuffle(lines)
 
-    bos = tokenizer.bos_token
-    eos = tokenizer.eos_token
+    start_token = tokenizer.bos_token or tokenizer.cls_token
+    end_token = tokenizer.eos_token or tokenizer.sep_token
 
     sentences = []
     labels = []
     for _, sentence, label in csv.reader(lines, delimiter="\t"):
-        sentences.append(bos + sentence + eos)
+        sentences.append(start_token + sentence + end_token)
         labels.append(int(label))
 
     tokens = tokenizer(
@@ -112,7 +120,7 @@ def main(args: argparse.Namespace):
 
         # Model Initialize
         logger.info("[+] Model Initialize")
-        model = TFBartForSequenceClassification.from_pretrained(
+        model = TFAutoModelForSequenceClassification.from_pretrained(
             args.pretrained_model, num_labels=2, use_auth_token=args.use_auth_token, from_pt=args.from_pytorch
         )
         model.config.id2label = {0: "negative", 1: "positive"}
@@ -122,7 +130,9 @@ def main(args: argparse.Namespace):
         logger.info("[+] Model compiling complete")
         train_dataset_size = total_dataset_size - args.num_dev_dataset
         total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
-        model.compile(
+        outputs = model(tf.keras.Input([None], dtype=tf.int32), return_dict=True)
+        training_model = tf.keras.Model({"input_ids": model.input}, outputs.logits)
+        training_model.compile(
             optimizer=AdamWeightDecay(
                 LRScheduler(
                     total_steps,
@@ -134,17 +144,14 @@ def main(args: argparse.Namespace):
                 weight_decay_rate=0.01,
                 exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
             ),
-            loss={
-                "logits": tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                "encoder_last_hidden_state": None,
-            },
-            metrics={"logits": [tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")]},
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")],
         )
 
         # Training
         logger.info("[+] Start training")
         checkpoint_path = path_join(args.output_path, "best_model.ckpt")
-        model.fit(
+        training_model.fit(
             train_dataset,
             validation_data=dev_dataset,
             epochs=args.epochs,
@@ -153,7 +160,7 @@ def main(args: argparse.Namespace):
                     checkpoint_path,
                     save_weights_only=True,
                     save_best_only=True,
-                    monitor="val_logits_accuracy",
+                    monitor="val_accuracy",
                     mode="max",
                     verbose=1,
                 ),
@@ -163,11 +170,12 @@ def main(args: argparse.Namespace):
             ],
         )
         logger.info("[+] Load and Save Best Model")
-        model.load_weights(checkpoint_path)
+        training_model.load_weights(checkpoint_path)
+        model.save_weights(checkpoint_path)
         model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
-        _, loss, accuracy = model.evaluate(test_dataset)
+        loss, accuracy = training_model.evaluate(test_dataset)
         logger.info(f"[+] Test loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
 
 

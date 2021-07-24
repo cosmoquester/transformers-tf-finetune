@@ -77,6 +77,18 @@ class LoggingCallback(tf.keras.callbacks.Callback):
         self.logs = {}
 
 
+def tfbart_sequence_classifier_to_transformers():
+    """Add TFBartForSequenceClassifier model to transformers"""
+    import transformers
+    from transformers.models.auto.modeling_tf_auto import TF_MODEL_FOR_SEQUENCE_CLASSIFICATION_MAPPING
+
+    from transformers_bart_finetune.models import TFBartForSequenceClassification
+
+    TF_MODEL_FOR_SEQUENCE_CLASSIFICATION_MAPPING[transformers.BartConfig] = TFBartForSequenceClassification
+    transformers.TFBartForSequenceClassification = TFBartForSequenceClassification
+    transformers.models.bart.modeling_tf_bart.TFBartForSequenceClassification = TFBartForSequenceClassification
+
+
 def get_logger(name: str) -> logging.Logger:
     """Return logger for logging"""
     logger = logging.getLogger(name)

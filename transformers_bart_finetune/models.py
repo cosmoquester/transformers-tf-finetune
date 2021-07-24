@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Union
 import tensorflow as tf
 from transformers import BartConfig, TFAutoModel, TFBartPretrainedModel
 from transformers.modeling_tf_outputs import TFBaseModelOutput, TFSeq2SeqSequenceClassifierOutput
-from transformers.modeling_tf_utils import input_processing
+from transformers.modeling_tf_utils import TFSequenceClassificationLoss, input_processing
 from transformers.models.bart.modeling_tf_bart import TFBartMainLayer
 
 
@@ -31,7 +31,7 @@ class TFBartClassificationHead(tf.keras.layers.Layer):
         return hidden_states
 
 
-class TFBartForSequenceClassification(TFBartPretrainedModel):
+class TFBartForSequenceClassification(TFBartPretrainedModel, TFSequenceClassificationLoss):
     """
     TFBart model having classification head for sequence classification.
     call input arguments are same as arguments of TFBartMainLayer input.
