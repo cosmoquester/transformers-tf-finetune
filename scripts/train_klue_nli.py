@@ -7,10 +7,18 @@ from math import ceil
 from typing import Dict, Tuple
 
 import tensorflow as tf
-from transformers import AdamWeightDecay, AutoTokenizer
+from transformers import AdamWeightDecay, AutoTokenizer, TFAutoModelForSequenceClassification
 
-from transformers_bart_finetune.models import TFBartForSequenceClassification
-from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
+from transformers_bart_finetune.utils import (
+    LRScheduler,
+    get_device_strategy,
+    get_logger,
+    path_join,
+    set_random_seed,
+    tfbart_sequence_classifier_to_transformers,
+)
+
+tfbart_sequence_classifier_to_transformers()
 
 # fmt: off
 KLUE_NLI_TRAIN_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/klue-nli-v1/klue-nli-v1_train.json"
@@ -61,14 +69,14 @@ def load_dataset(
     if shuffle:
         random.shuffle(examples)
 
-    bos = tokenizer.bos_token
-    eos = tokenizer.eos_token
+    start_token = tokenizer.bos_token or tokenizer.cls_token
+    end_token = tokenizer.eos_token or tokenizer.sep_token
     sep = tokenizer.sep_token
 
     sentences = []
     labels = []
     for example in examples:
-        sentences.append(bos + example["premise"] + sep + example["hypothesis"] + eos)
+        sentences.append(start_token + example["premise"] + sep + example["hypothesis"] + end_token)
         labels.append(label2id[example["gold_label"]])
 
     tokens = tokenizer(
@@ -117,7 +125,7 @@ def main(args: argparse.Namespace):
 
         # Model Initialize
         logger.info("[+] Model Initialize")
-        model = TFBartForSequenceClassification.from_pretrained(
+        model = TFAutoModelForSequenceClassification.from_pretrained(
             args.pretrained_model,
             num_labels=len(label2id),
             use_auth_token=args.use_auth_token,
@@ -130,7 +138,9 @@ def main(args: argparse.Namespace):
         logger.info("[+] Model compiling complete")
         train_dataset_size = total_dataset_size - args.num_valid_dataset
         total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
-        model.compile(
+        outputs = model(tf.keras.Input([None], dtype=tf.int32), return_dict=True)
+        training_model = tf.keras.Model({"input_ids": model.input}, outputs.logits)
+        training_model.compile(
             optimizer=AdamWeightDecay(
                 LRScheduler(
                     total_steps,
@@ -142,17 +152,14 @@ def main(args: argparse.Namespace):
                 weight_decay_rate=0.01,
                 exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
             ),
-            loss={
-                "logits": tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                "encoder_last_hidden_state": None,
-            },
-            metrics={"logits": [tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")]},
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")],
         )
 
         # Training
         logger.info("[+] Start training")
         checkpoint_path = path_join(args.output_path, "best_model.ckpt")
-        model.fit(
+        training_model.fit(
             train_dataset,
             validation_data=valid_dataset,
             epochs=args.epochs,
@@ -161,7 +168,7 @@ def main(args: argparse.Namespace):
                     checkpoint_path,
                     save_weights_only=True,
                     save_best_only=True,
-                    monitor="val_logits_accuracy",
+                    monitor="val_accuracy",
                     mode="max",
                     verbose=1,
                 ),
@@ -171,11 +178,12 @@ def main(args: argparse.Namespace):
             ],
         )
         logger.info("[+] Load and Save Best Model")
-        model.load_weights(checkpoint_path)
+        training_model.load_weights(checkpoint_path)
+        model.save_weights(checkpoint_path)
         model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
-        _, loss, accuracy = model.evaluate(dev_dataset)
+        loss, accuracy = training_model.evaluate(dev_dataset)
         logger.info(f"[+] Dev loss: {loss:.4f}, Dev Accuracy: {accuracy:.4f}")
 
 

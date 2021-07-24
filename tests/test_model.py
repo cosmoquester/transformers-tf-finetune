@@ -1,6 +1,6 @@
 import pytest
 import tensorflow as tf
-from transformers import BartConfig
+from transformers import BartConfig, TFBartModel
 
 from transformers_bart_finetune.models import (
     SemanticTextualSimailarityWrapper,
@@ -45,7 +45,8 @@ def test_classification_model(config: BartConfig):
 
 
 def test_semantic_textual_simailarity_wrapper(config: BartConfig):
-    model = SemanticTextualSimailarityWrapper(config)
+    model = TFBartModel(config)
+    model = SemanticTextualSimailarityWrapper(model)
 
     batch_size = 3
     sequence_length = 13
