@@ -9,14 +9,14 @@ from typing import Tuple
 import tensorflow as tf
 from transformers import AutoTokenizer, TFAutoModel
 
-from transformers_bart_finetune.metrics import (
+from transformers_tf_finetune.metrics import (
     PearsonCorrelationMetric,
     SpearmanCorrelationMetric,
     pearson_correlation_coefficient,
     spearman_correlation_coefficient,
 )
-from transformers_bart_finetune.models import SemanticTextualSimailarityWrapper
-from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
+from transformers_tf_finetune.models import SemanticTextualSimailarityWrapper
+from transformers_tf_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 # fmt: off
 KORSTS_TRAIN_URI = "https://raw.githubusercontent.com/kakaobrain/KorNLUDatasets/master/KorSTS/sts-train.tsv"
@@ -147,10 +147,7 @@ def main(args: argparse.Namespace):
                 ),
             ),
             loss=tf.keras.losses.MeanSquaredError(),
-            metrics=[
-                PearsonCorrelationMetric(name="pearson_coef"),
-                SpearmanCorrelationMetric(name="spearman_coef"),
-            ],
+            metrics=[PearsonCorrelationMetric(name="pearson_coef"), SpearmanCorrelationMetric(name="spearman_coef")],
         )
 
         # Training

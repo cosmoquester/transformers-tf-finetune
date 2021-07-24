@@ -10,7 +10,7 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
 
-from transformers_bart_finetune.utils import (
+from transformers_tf_finetune.utils import (
     LRScheduler,
     get_device_strategy,
     get_logger,

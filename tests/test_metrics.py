@@ -1,11 +1,7 @@
 import pytest
 import tensorflow as tf
 
-from transformers_bart_finetune.metrics import (
-    get_rank,
-    pearson_correlation_coefficient,
-    spearman_correlation_coefficient,
-)
+from transformers_tf_finetune.metrics import get_rank, pearson_correlation_coefficient, spearman_correlation_coefficient
 
 
 @pytest.mark.parametrize(

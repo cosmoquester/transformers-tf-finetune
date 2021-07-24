@@ -82,7 +82,7 @@ def tfbart_sequence_classifier_to_transformers():
     import transformers
     from transformers.models.auto.modeling_tf_auto import TF_MODEL_FOR_SEQUENCE_CLASSIFICATION_MAPPING
 
-    from transformers_bart_finetune.models import TFBartForSequenceClassification
+    from transformers_tf_finetune.models import TFBartForSequenceClassification
 
     TF_MODEL_FOR_SEQUENCE_CLASSIFICATION_MAPPING[transformers.BartConfig] = TFBartForSequenceClassification
     transformers.TFBartForSequenceClassification = TFBartForSequenceClassification

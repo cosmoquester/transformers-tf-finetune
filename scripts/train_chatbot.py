@@ -9,9 +9,9 @@ from typing import Tuple
 import tensorflow as tf
 from transformers import AutoTokenizer, TFBartForConditionalGeneration
 
-from transformers_bart_finetune.losses import SparseCategoricalCrossentropy
-from transformers_bart_finetune.metrics import SparseCategoricalAccuracy
-from transformers_bart_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
+from transformers_tf_finetune.losses import SparseCategoricalCrossentropy
+from transformers_tf_finetune.metrics import SparseCategoricalAccuracy
+from transformers_tf_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 CHATBOT_URI = "https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData%20.csv"
 

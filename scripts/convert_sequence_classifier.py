@@ -3,7 +3,7 @@ import sys
 
 from transformers import BartForSequenceClassification
 
-from transformers_bart_finetune.models import TFBartForSequenceClassification
+from transformers_tf_finetune.models import TFBartForSequenceClassification
 
 # fmt: off
 parser = argparse.ArgumentParser(description='Convert "BartForSequenceClassification" and "TFBartForSequenceClassification"')
