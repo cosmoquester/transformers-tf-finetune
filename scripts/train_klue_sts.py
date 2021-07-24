@@ -23,7 +23,7 @@ KLUE_STS_TRAIN_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main
 KLUE_STS_DEV_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/klue-sts-v1/klue-sts-v1_dev.json"
 
 parser = argparse.ArgumentParser(description="Script to train KLUE STS Task with BART")
-parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
+parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--train-dataset-path", default=KLUE_STS_TRAIN_URI, help="klue sts train dataset if using local file")
 parser.add_argument("--dev-dataset-path", default=KLUE_STS_DEV_URI, help="klue sts dev dataset if using local file")

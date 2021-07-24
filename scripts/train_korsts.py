@@ -24,7 +24,7 @@ KORSTS_DEV_URI = "https://raw.githubusercontent.com/kakaobrain/KorNLUDatasets/ma
 KORSTS_TEST_URI = "https://raw.githubusercontent.com/kakaobrain/KorNLUDatasets/master/KorSTS/sts-test.tsv"
 
 parser = argparse.ArgumentParser(description="Script to train KorSTS Task with BART")
-parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
+parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--train-dataset-path", default=KORSTS_TRAIN_URI, help="kor sts train dataset if using local file")
 parser.add_argument("--dev-dataset-path", default=KORSTS_DEV_URI, help="kor sts dev dataset if using local file")

@@ -17,7 +17,7 @@ HATESPEECH_DEV_URI = "https://raw.githubusercontent.com/kocohub/korean-hate-spee
 
 # fmt: off
 parser = argparse.ArgumentParser(description="Script to train HATESPEECH Task with BART")
-parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
+parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--train-dataset-path", default=HATESPEECH_TRAIN_URI, help="hate speech train dataset if using local file")
 parser.add_argument("--dev-dataset-path", default=HATESPEECH_DEV_URI, help="hate speech test dataset if using local file")

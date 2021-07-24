@@ -26,7 +26,7 @@ KLUE_TC_TRAIN_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/
 KLUE_TC_DEV_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/ynat-v1/ynat-v1_dev.json"
 
 parser = argparse.ArgumentParser(description="Script to train KLUE TC Task with BART")
-parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
+parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--train-dataset-path", default=KLUE_TC_TRAIN_URI, help="klue tc train dataset if using local file")
 parser.add_argument("--dev-dataset-path", default=KLUE_TC_DEV_URI, help="klue tc dev dataset if using local file")

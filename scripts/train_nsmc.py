@@ -25,7 +25,7 @@ NSMC_TEST_URI = "https://raw.githubusercontent.com/e9t/nsmc/master/ratings_test.
 
 # fmt: off
 parser = argparse.ArgumentParser(description="Script to train NSMC Task with BART")
-parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
+parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--train-dataset-path", default=NSMC_TRAIN_URI, help="nsmc train dataset if using local file")
 parser.add_argument("--test-dataset-path", default=NSMC_TEST_URI, help="nsmc test dataset if using local file")

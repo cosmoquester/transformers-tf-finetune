@@ -26,7 +26,7 @@ QUESTION_PAIR_VALID_URI = "https://raw.githubusercontent.com/aisolab/nlp_classif
 QUESTION_PAIR_TEST_URI = "https://raw.githubusercontent.com/aisolab/nlp_classification/master/BERT_pairwise_text_classification/qpair/test.txt"
 
 parser = argparse.ArgumentParser(description="Script to train Question Pair Task with BART")
-parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
+parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--train-dataset-path", default=QUESTION_PAIR_TRAIN_URI, help="question pair train dataset if using local file")
 parser.add_argument("--valid-dataset-path", default=QUESTION_PAIR_VALID_URI, help="question pair validation dataset if using local file")
