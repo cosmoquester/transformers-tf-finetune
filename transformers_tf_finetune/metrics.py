@@ -85,6 +85,36 @@ class SparseCategoricalAccuracy(tf.keras.metrics.Metric):
         return self.total_sum / self.total_count
 
 
+class BinaryF1Score(tf.keras.metrics.Metric):
+    """Binary F1 Score"""
+
+    def __init__(self, threshold: float = 0.5, name="f1_score"):
+        super().__init__(name=name)
+
+        self.threshold = threshold
+        self.true_positive = self.add_weight(name="true_positive", initializer="zeros")
+        self.true_ground_truth = self.add_weight(name="true_ground_truth", initializer="zeros")
+        self.true_predicted = self.add_weight(name="true_predicted", initializer="zeros")
+        self.eps = 1e-8
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_true = tf.cast(tf.squeeze(y_true) > self.threshold, dtype=tf.float32)
+        y_pred = tf.cast(tf.squeeze(y_pred) > self.threshold, dtype=tf.float32)
+
+        true_positive = tf.reduce_sum(y_true * y_pred, axis=-1)
+        true_ground_truth = tf.reduce_sum(y_true, axis=-1)
+        true_predicted = tf.reduce_sum(y_pred, axis=-1)
+
+        self.true_positive.assign_add(true_positive)
+        self.true_ground_truth.assign_add(true_ground_truth)
+        self.true_predicted.assign_add(true_predicted)
+
+    def result(self):
+        precision = self.true_positive / (self.true_predicted + self.eps)
+        recall = self.true_positive / (self.true_ground_truth + self.eps)
+        return (2 * precision * recall) / (precision + recall + self.eps)
+
+
 class PearsonCorrelationMetric(tf.keras.metrics.Metric):
     """Pearson correlation coefficient metric"""
 
