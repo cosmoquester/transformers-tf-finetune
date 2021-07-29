@@ -9,7 +9,9 @@ from typing import Tuple
 import tensorflow as tf
 from transformers import AutoTokenizer, TFAutoModel
 
+from transformers_tf_finetune.losses import PearsonCorrelationLoss
 from transformers_tf_finetune.metrics import (
+    BinaryF1Score,
     PearsonCorrelationMetric,
     SpearmanCorrelationMetric,
     pearson_correlation_coefficient,
@@ -76,22 +78,26 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
         sentences2.append(bos + sentence2 + eos)
         normalized_labels.append(float(score) / 5.0)
 
-    tokens1 = tokenizer(
-        sentences1,
-        padding=True,
-        return_tensors="tf",
-        return_token_type_ids=False,
-        return_attention_mask=False,
-    )["input_ids"]
-    tokens2 = tokenizer(
-        sentences2,
-        padding=True,
-        return_tensors="tf",
-        return_token_type_ids=False,
-        return_attention_mask=False,
-    )["input_ids"]
+    inputs1 = dict(
+        tokenizer(
+            sentences1,
+            padding=True,
+            return_tensors="tf",
+            return_token_type_ids=False,
+            return_attention_mask=False,
+        )
+    )
+    inputs2 = dict(
+        tokenizer(
+            sentences2,
+            padding=True,
+            return_tensors="tf",
+            return_token_type_ids=False,
+            return_attention_mask=False,
+        )
+    )
 
-    dataset = tf.data.Dataset.from_tensor_slices(((tokens1, tokens2), normalized_labels))
+    dataset = tf.data.Dataset.from_tensor_slices(((inputs1, inputs2), normalized_labels))
     return dataset, len(normalized_labels)
 
 
@@ -131,7 +137,7 @@ def main(args: argparse.Namespace):
         model = TFAutoModel.from_pretrained(
             args.pretrained_model, use_auth_token=args.use_auth_token, from_pt=args.from_pytorch
         )
-        model_sts = SemanticTextualSimailarityWrapper(model=model)
+        model_sts = SemanticTextualSimailarityWrapper(model=model, embedding_dropout=0.1)
 
         # Model Compile
         logger.info("[+] Model compiling complete")
@@ -146,8 +152,13 @@ def main(args: argparse.Namespace):
                     args.warmup_steps,
                 ),
             ),
-            loss=tf.keras.losses.MeanSquaredError(),
-            metrics=[PearsonCorrelationMetric(name="pearson_coef"), SpearmanCorrelationMetric(name="spearman_coef")],
+            loss=[PearsonCorrelationLoss(), tf.keras.losses.MeanSquaredError()],
+            loss_weights=[0.25, 0.75],
+            metrics=[
+                BinaryF1Score(),
+                PearsonCorrelationMetric(name="pearson_coef"),
+                SpearmanCorrelationMetric(name="spearman_coef"),
+            ],
         )
 
         # Training
@@ -178,14 +189,20 @@ def main(args: argparse.Namespace):
         logger.info("[+] Start testing")
         preds = []
         labels = []
+        f1 = BinaryF1Score()
         for inputs, label in test_dataset:
             pred = model_sts(inputs, training=False)
             preds.extend(pred.numpy())
             labels.extend(label.numpy())
+            f1.update_state(label, pred)
 
         pearson_score = pearson_correlation_coefficient(labels, preds)
         spearman_score = spearman_correlation_coefficient(labels, preds)
-        logger.info(f"[+] Dev Pearson: {pearson_score:.4f}, Dev Spearman: {spearman_score:.4f}")
+        logger.info(
+            f"[+] Dev F1 Score: {f1.result():.4f}, "
+            f"Dev Pearson: {pearson_score:.4f}, "
+            f"Dev Spearman: {spearman_score:.4f}"
+        )
 
 
 if __name__ == "__main__":
