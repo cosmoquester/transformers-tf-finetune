@@ -172,7 +172,7 @@ def main(args: argparse.Namespace):
             ],
         )
         logger.info("[+] Load and Save Best Model")
-        model.load_weights(checkpoint_path)
+        model_sts.load_weights(checkpoint_path)
         model_sts.model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
