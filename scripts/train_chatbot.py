@@ -67,14 +67,14 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
         answers.append(bos + answer + eos)
 
     max_length = max(len(text) for text in questions + answers)
-    input_tokens = tokenizer(
+    inputs = tokenizer(
         questions,
         padding="max_length",
         max_length=max_length,
         return_tensors="tf",
         return_token_type_ids=False,
-        return_attention_mask=False,
-    )["input_ids"]
+        return_attention_mask=True,
+    )
 
     target_tokens = tokenizer(
         answers,
@@ -86,7 +86,7 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     )["input_ids"]
 
     dataset = tf.data.Dataset.from_tensor_slices(
-        ({"input_ids": input_tokens, "decoder_input_ids": target_tokens[:, :-1]}, target_tokens[:, 1:])
+        ({**inputs, "decoder_input_ids": target_tokens[:, :-1]}, target_tokens[:, 1:])
     )
     return dataset, len(answers)
 

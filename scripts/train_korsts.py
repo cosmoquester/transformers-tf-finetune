@@ -84,7 +84,7 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
             padding=True,
             return_tensors="tf",
             return_token_type_ids=False,
-            return_attention_mask=False,
+            return_attention_mask=True,
         )
     )
     inputs2 = dict(
@@ -93,7 +93,7 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
             padding=True,
             return_tensors="tf",
             return_token_type_ids=False,
-            return_attention_mask=False,
+            return_attention_mask=True,
         )
     )
 

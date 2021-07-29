@@ -75,15 +75,17 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
         sentences.append(start_token + sentence + end_token)
         labels.append(int(label))
 
-    tokens = tokenizer(
-        sentences,
-        padding=True,
-        return_tensors="tf",
-        return_token_type_ids=False,
-        return_attention_mask=False,
-    )["input_ids"]
+    inputs = dict(
+        tokenizer(
+            sentences,
+            padding=True,
+            return_tensors="tf",
+            return_token_type_ids=False,
+            return_attention_mask=True,
+        )
+    )
 
-    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": tokens}, labels))
+    dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
     return dataset, len(labels)
 
 

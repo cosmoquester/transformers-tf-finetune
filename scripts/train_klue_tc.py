@@ -79,15 +79,17 @@ def load_dataset(
         sentences.append(start_token + example["title"] + end_token)
         labels.append(label2id[example["label"]])
 
-    tokens = tokenizer(
-        sentences,
-        padding=True,
-        return_tensors="tf",
-        return_token_type_ids=False,
-        return_attention_mask=False,
-    )["input_ids"]
+    inputs = dict(
+        tokenizer(
+            sentences,
+            padding=True,
+            return_tensors="tf",
+            return_token_type_ids=False,
+            return_attention_mask=True,
+        )
+    )
 
-    dataset = tf.data.Dataset.from_tensor_slices(({"input_ids": tokens}, tf.one_hot(labels, len(label2id))))
+    dataset = tf.data.Dataset.from_tensor_slices((inputs, tf.one_hot(labels, len(label2id))))
     return dataset, len(labels)
 
 
