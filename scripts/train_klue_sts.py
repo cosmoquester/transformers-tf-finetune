@@ -19,8 +19,8 @@ from transformers_tf_finetune.models import SemanticTextualSimailarityWrapper
 from transformers_tf_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 # fmt: off
-KLUE_STS_TRAIN_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/klue-sts-v1/klue-sts-v1_train.json"
-KLUE_STS_DEV_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/klue-sts-v1/klue-sts-v1_dev.json"
+KLUE_STS_TRAIN_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/klue-sts-v1.1/klue-sts-v1.1_train.json"
+KLUE_STS_DEV_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/klue-sts-v1.1/klue-sts-v1.1_dev.json"
 
 parser = argparse.ArgumentParser(description="Script to train KLUE STS Task with BART")
 parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")

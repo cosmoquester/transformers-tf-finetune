@@ -22,8 +22,8 @@ from transformers_tf_finetune.utils import (
 tfbart_sequence_classifier_to_transformers()
 
 # fmt: off
-KLUE_TC_TRAIN_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/ynat-v1/ynat-v1_train.json"
-KLUE_TC_DEV_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/ynat-v1/ynat-v1_dev.json"
+KLUE_TC_TRAIN_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/ynat-v1.1/ynat-v1.1_train.json"
+KLUE_TC_DEV_URI = "https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_benchmark/ynat-v1.1/ynat-v1.1_dev.json"
 
 parser = argparse.ArgumentParser(description="Script to train KLUE TC Task with BART")
 parser.add_argument("--pretrained-model", type=str, required=True, help="transformers pretrained path")
