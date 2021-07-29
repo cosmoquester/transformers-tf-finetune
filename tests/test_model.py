@@ -46,7 +46,7 @@ def test_classification_model(config: BartConfig):
 
 def test_semantic_textual_simailarity_wrapper(config: BartConfig):
     model = TFBartModel(config)
-    model = SemanticTextualSimailarityWrapper(model)
+    model = SemanticTextualSimailarityWrapper(model, 0.1)
 
     batch_size = 3
     sequence_length = 13

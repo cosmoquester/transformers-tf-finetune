@@ -259,22 +259,27 @@ class SemanticTextualSimailarityWrapper(tf.keras.Model):
 
     Arguments:
         model: TFAutoModel, model instance being capable of TFAutomodel.
+        embedding_dropout: float, dropout rate of embeddings.
 
     Output Shape:
         2D tensor with shape:
             `[BatchSize, 1]`
     """
 
-    def __init__(self, model: TFAutoModel, *args, **kwargs):
+    def __init__(self, model: TFAutoModel, embedding_dropout: float, *args, **kwargs):
         super().__init__(*args, **kwargs, name="semantic_textual_simailarity")
 
         self.model = model
+        self.dropout = tf.keras.layers.Dropout(embedding_dropout)
 
     def call(self, inputs, training=None, **kwargs):
         input_ids1, input_ids2 = inputs
 
         embedding1 = self.model(input_ids=input_ids1).last_hidden_state[:, -1, :]
         embedding2 = self.model(input_ids=input_ids2).last_hidden_state[:, -1, :]
+
+        embedding1 = self.dropout(embedding1)
+        embedding2 = self.dropout(embedding2)
 
         return self.cosine_simailarity(embedding1, embedding2)
 
