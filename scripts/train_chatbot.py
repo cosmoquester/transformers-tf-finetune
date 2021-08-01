@@ -11,6 +11,7 @@ from transformers import AutoTokenizer, TFBartForConditionalGeneration
 
 from transformers_tf_finetune.losses import SparseCategoricalCrossentropy
 from transformers_tf_finetune.metrics import SparseCategoricalAccuracy
+from transformers_tf_finetune.models import GenerationSearchWrapper
 from transformers_tf_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 CHATBOT_URI = "https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData%20.csv"
@@ -35,6 +36,8 @@ parser.add_argument("--seed", type=int, help="Set random seed")
 parser.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", "TPU"], help="device to use (TPU or GPU or CPU)")
 parser.add_argument("--use-auth-token", action="store_true", help="use huggingface-cli credential for private model")
 parser.add_argument("--from-pytorch", action="store_true", help="load from pytorch weight")
+parser.add_argument("--max-sequence-length", type=int, default=128, help="max sequence length for decoding")
+parser.add_argument("--beam-size", type=int, default=0, help="beam size, use greedy search if this is zero")
 # fmt: on
 
 
@@ -180,15 +183,29 @@ def main(args: argparse.Namespace):
         logger.info("[+] Start prediction")
         input_tokens = []
         predict_tokens = []
+        ppls = []
+        searcher = GenerationSearchWrapper(
+            model,
+            args.max_sequence_length,
+            tokenizer.convert_tokens_to_ids(tokenizer.bos_token),
+            tokenizer.convert_tokens_to_ids(tokenizer.eos_token),
+            tokenizer.convert_tokens_to_ids(tokenizer.pad_token),
+        )
         for batch, _ in dev_dataset:
-            output = model(batch)["logits"]
+            if args.beam_size > 0:
+                output, ppl = searcher.beam_search(batch["input_ids"], batch["attention_mask"], args.beam_size)
+                output = output[:, 0, :]
+                ppl = ppl[:, 0]
+            else:
+                output, ppl = searcher.greedy_search(batch["input_ids"], batch["attention_mask"])
             input_tokens.extend(batch["input_ids"].numpy())
-            predict_tokens.extend(tf.argmax(output, axis=2).numpy())
+            predict_tokens.extend(output.numpy())
+            ppls.extend(ppl.numpy())
 
         input_sentences = tokenizer.batch_decode(input_tokens, skip_special_tokens=True)
         predict_sentences = tokenizer.batch_decode(predict_tokens, skip_special_tokens=True)
-        for question, answer in zip(input_sentences, predict_sentences):
-            print("Q:", question, "A:", answer)
+        for question, answer, ppl in zip(input_sentences, predict_sentences, ppls):
+            print(f"Q: {question} A: {answer} PPL:{ppl:.2f}")
 
 
 if __name__ == "__main__":
