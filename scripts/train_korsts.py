@@ -48,7 +48,7 @@ parser.add_argument("--from-pytorch", action="store_true", help="load from pytor
 # fmt: on
 
 
-def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = False) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = False) -> tf.data.Dataset:
     """
     Load KorSTS dataset from local file or web
 
@@ -98,7 +98,7 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     )
 
     dataset = tf.data.Dataset.from_tensor_slices(((inputs1, inputs2), normalized_labels))
-    return dataset, len(normalized_labels)
+    return dataset
 
 
 def main(args: argparse.Namespace):
@@ -127,10 +127,10 @@ def main(args: argparse.Namespace):
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
-        train_dataset, train_dataset_size = load_dataset(args.train_dataset_path, tokenizer, True)
+        train_dataset = load_dataset(args.train_dataset_path, tokenizer, True)
         train_dataset = train_dataset.batch(args.batch_size)
-        dev_dataset = load_dataset(args.dev_dataset_path, tokenizer)[0].batch(args.dev_batch_size)
-        test_dataset = load_dataset(args.test_dataset_path, tokenizer)[0].batch(args.dev_batch_size)
+        dev_dataset = load_dataset(args.dev_dataset_path, tokenizer).batch(args.dev_batch_size)
+        test_dataset = load_dataset(args.test_dataset_path, tokenizer).batch(args.dev_batch_size)
 
         # Model Initialize
         logger.info("[+] Model Initialize")
@@ -141,11 +141,10 @@ def main(args: argparse.Namespace):
 
         # Model Compile
         logger.info("[+] Model compiling complete")
-        total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
         model_sts.compile(
             optimizer=tf.keras.optimizers.Adam(
                 LRScheduler(
-                    total_steps,
+                    len(train_dataset) * args.epochs,
                     args.learning_rate,
                     args.min_learning_rate,
                     args.warmup_rate,

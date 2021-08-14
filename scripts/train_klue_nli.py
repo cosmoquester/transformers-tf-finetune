@@ -49,7 +49,7 @@ parser.add_argument("--from-pytorch", action="store_true", help="load from pytor
 
 def load_dataset(
     dataset_path: str, tokenizer: AutoTokenizer, label2id: Dict[str, int], shuffle: bool = False
-) -> Tuple[tf.data.Dataset, int]:
+) -> tf.data.Dataset:
     """
     Load KLUE NLI dataset from local file or web
 
@@ -90,7 +90,7 @@ def load_dataset(
     )
 
     dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
-    return dataset, len(labels)
+    return dataset
 
 
 def main(args: argparse.Namespace):
@@ -120,10 +120,10 @@ def main(args: argparse.Namespace):
         # Construct Dataset
         logger.info("[+] Load Datasets")
         label2id = {"neutral": 0, "entailment": 1, "contradiction": 2}
-        dataset, total_dataset_size = load_dataset(args.train_dataset_path, tokenizer, label2id, True)
+        dataset = load_dataset(args.train_dataset_path, tokenizer, label2id, True)
         train_dataset = dataset.skip(args.num_valid_dataset).batch(args.batch_size)
         valid_dataset = dataset.take(args.num_valid_dataset).batch(args.dev_batch_size)
-        dev_dataset = load_dataset(args.dev_dataset_path, tokenizer, label2id)[0].batch(args.dev_batch_size)
+        dev_dataset = load_dataset(args.dev_dataset_path, tokenizer, label2id).batch(args.dev_batch_size)
 
         # Model Initialize
         logger.info("[+] Model Initialize")
@@ -138,14 +138,12 @@ def main(args: argparse.Namespace):
 
         # Model Compile
         logger.info("[+] Model compiling complete")
-        train_dataset_size = total_dataset_size - args.num_valid_dataset
-        total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
         outputs = model(tf.keras.Input([None], dtype=tf.int32), return_dict=True)
         training_model = tf.keras.Model({"input_ids": model.input}, outputs.logits)
         training_model.compile(
             optimizer=AdamWeightDecay(
                 LRScheduler(
-                    total_steps,
+                    len(train_dataset) * args.epochs,
                     args.learning_rate,
                     args.min_learning_rate,
                     args.warmup_rate,

@@ -41,14 +41,14 @@ parser.add_argument("--beam-size", type=int, default=0, help="beam size, use gre
 # fmt: on
 
 
-def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = False) -> Tuple[tf.data.Dataset, int]:
+def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = False) -> tf.data.Dataset:
     """
     Load Chatbot Conversation dataset from local file or web
 
     :param dataset_path: local file path or file uri
     :param tokenizer: PreTrainedTokenizer for tokenizing
     :param shuffle: whether shuffling lines or not
-    :returns: conversation dataset, number of dataset
+    :returns: conversation dataset
     """
     if dataset_path.startswith("https://"):
         with urllib.request.urlopen(dataset_path) as response:
@@ -91,7 +91,7 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     dataset = tf.data.Dataset.from_tensor_slices(
         ({**inputs, "decoder_input_ids": target_tokens[:, :-1]}, target_tokens[:, 1:])
     )
-    return dataset, len(answers)
+    return dataset
 
 
 def main(args: argparse.Namespace):
@@ -120,7 +120,7 @@ def main(args: argparse.Namespace):
 
         # Construct Dataset
         logger.info("[+] Load Datasets")
-        dataset, total_dataset_size = load_dataset(args.dataset_path, tokenizer, True)
+        dataset = load_dataset(args.dataset_path, tokenizer, True)
         train_dataset = dataset.skip(args.num_dev_dataset).batch(args.batch_size)
         dev_dataset = dataset.take(args.num_dev_dataset).batch(args.dev_batch_size)
 
@@ -132,12 +132,10 @@ def main(args: argparse.Namespace):
 
         # Model Compile
         logger.info("[+] Model compiling complete")
-        train_dataset_size = total_dataset_size - args.num_dev_dataset
-        total_steps = ceil(train_dataset_size / args.batch_size) * args.epochs
         model.compile(
             optimizer=tf.optimizers.Adam(
                 LRScheduler(
-                    total_steps,
+                    len(train_dataset) * args.epochs,
                     args.learning_rate,
                     args.min_learning_rate,
                     args.warmup_rate,
