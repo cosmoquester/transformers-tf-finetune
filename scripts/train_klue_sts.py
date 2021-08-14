@@ -3,8 +3,6 @@ import json
 import random
 import sys
 import urllib.request
-from math import ceil
-from typing import Tuple
 
 import tensorflow as tf
 from transformers import AutoTokenizer, TFAutoModel

@@ -3,8 +3,7 @@ import json
 import random
 import sys
 import urllib.request
-from math import ceil
-from typing import Dict, Tuple
+from typing import Dict
 
 import tensorflow as tf
 from transformers import AdamWeightDecay, AutoTokenizer, TFAutoModelForSequenceClassification
