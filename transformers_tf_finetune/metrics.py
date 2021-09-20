@@ -26,7 +26,7 @@ def get_rank(data: tf.Tensor) -> tf.Tensor:
     data = tf.squeeze(data)
     tf.debugging.assert_rank(data, 1)
 
-    _, index, counts = tf.unique_with_counts(tf.sort(data))
+    _, index, counts = unique_with_counts(tf.sort(data))
     counts = tf.cast(counts, tf.float32)
     end_numbers = tf.scan(lambda x, y: x + y, counts)
     unique_ranks = end_numbers - (counts - 1) / 2
