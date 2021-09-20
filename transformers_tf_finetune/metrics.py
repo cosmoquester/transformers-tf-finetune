@@ -1,6 +1,17 @@
 import tensorflow as tf
 
 
+def unique_with_counts(tensor_1d: tf.Tensor):
+    """
+    Same as `tf.unique_with_counts` function, but compatible with TPU
+    (`tf.unique_with_counts` function does not support TPU)
+    """
+    unique, indices = tf.unique(tensor_1d)
+    counts = tf.map_fn(lambda v: tf.cast(tf.math.count_nonzero(v == tensor_1d), unique.dtype), unique)
+
+    return unique, indices, counts
+
+
 def get_rank(data: tf.Tensor) -> tf.Tensor:
     """
     Get averaged rank of input data
