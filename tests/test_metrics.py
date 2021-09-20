@@ -1,7 +1,12 @@
 import pytest
 import tensorflow as tf
 
-from transformers_tf_finetune.metrics import get_rank, pearson_correlation_coefficient, spearman_correlation_coefficient
+from transformers_tf_finetune.metrics import (
+    get_rank,
+    pearson_correlation_coefficient,
+    spearman_correlation_coefficient,
+    unique_with_counts,
+)
 
 
 @pytest.mark.parametrize(
@@ -41,3 +46,14 @@ def test_pearson_correlation_coefficient(x, y, true_coef):
 def test_spearman_correlation_coefficient(x, y, true_coef):
     pred_coef = spearman_correlation_coefficient(x, y)
     tf.debugging.assert_near(pred_coef, true_coef)
+
+
+def test_unique_with_counts():
+    for _ in range(10):
+        data = tf.random.uniform([10], minval=-5, maxval=5, dtype=tf.int32)
+        unique1, indices1, counts1 = tf.unique_with_counts(data)
+        unique2, indices2, counts2 = unique_with_counts(data)
+
+        tf.debugging.assert_equal(unique1, unique2)
+        tf.debugging.assert_equal(indices1, indices2)
+        tf.debugging.assert_equal(counts1, counts2)
