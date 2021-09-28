@@ -317,19 +317,27 @@ class GenerationSearchWrapper:
         :return: generated tensor shaped. and ppl value of each generated sentences
         """
         batch_size = tf.shape(encoder_input)[0]
-        decoder_input = tf.fill([batch_size, 1], self.bos_id)
+        decoder_input = tf.concat(
+            [tf.fill([batch_size, 1], self.bos_id), tf.fill([batch_size, self.max_sequence_length - 1], self.pad_id)],
+            axis=1,
+        )
         log_perplexity = tf.fill([batch_size, 1], 0.0)
         sequence_lengths = tf.fill([batch_size, 1], self.max_sequence_length)
         is_ended = tf.zeros([batch_size, 1], tf.bool)
+        sequence_idx = tf.constant(1)
 
-        def _cond(decoder_input, is_ended, log_perplexity, sequence_lengths):
-            return tf.shape(decoder_input)[1] < self.max_sequence_length and not tf.reduce_all(is_ended)
+        while sequence_idx < self.max_sequence_length and not tf.reduce_all(is_ended):
+            decoder_attention_mask = tf.cast(decoder_input != self.pad_id, tf.int32)
 
-        def _body(decoder_input, is_ended, log_perplexity, sequence_lengths):
             # [BatchSize, VocabSize]
             output = self.model(
-                {"input_ids": encoder_input, "attention_mask": attention_mask, "decoder_input_ids": decoder_input}
-            )["logits"][:, -1, :]
+                {
+                    "input_ids": encoder_input,
+                    "attention_mask": attention_mask,
+                    "decoder_input_ids": decoder_input,
+                    "decoder_attention_mask": decoder_attention_mask,
+                }
+            )["logits"][:, sequence_idx - 1, :]
             output = tf.nn.log_softmax(output, axis=1)
 
             # [BatchSize, 1]
@@ -341,21 +349,17 @@ class GenerationSearchWrapper:
             sequence_lengths = tf.where(new_tokens == self.eos_id, tf.shape(decoder_input)[1] + 1, sequence_lengths)
 
             # [BatchSize, DecoderSequenceLength + 1]
-            decoder_input = tf.concat((decoder_input, new_tokens), axis=1)
+            mask = tf.one_hot(
+                sequence_idx,
+                depth=self.max_sequence_length,
+                on_value=True,
+                off_value=False,
+            )[tf.newaxis, :]
+            mask = tf.repeat(mask, batch_size, axis=0)
+            new_tokens = tf.repeat(new_tokens, self.max_sequence_length, axis=1)
+            decoder_input = tf.where(mask, new_tokens, decoder_input)
 
-            return decoder_input, is_ended, log_perplexity, sequence_lengths
-
-        decoder_input, is_ended, log_perplexity, sequence_lengths = tf.while_loop(
-            _cond,
-            _body,
-            [decoder_input, is_ended, log_perplexity, sequence_lengths],
-            shape_invariants=[
-                tf.TensorSpec([None, None], tf.int32),
-                tf.TensorSpec(is_ended.get_shape(), is_ended.dtype),
-                tf.TensorSpec(log_perplexity.get_shape(), log_perplexity.dtype),
-                tf.TensorSpec(sequence_lengths.get_shape(), sequence_lengths.dtype),
-            ],
-        )
+            sequence_idx += 1
 
         perplexity = tf.squeeze(
             tf.pow(tf.exp(log_perplexity), tf.cast(-1 / sequence_lengths, log_perplexity.dtype)), axis=1
