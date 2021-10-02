@@ -27,7 +27,7 @@ parser.add_argument("--warmup-rate", type=float, default=0.06)
 parser.add_argument("--warmup-steps", type=int)
 parser.add_argument("--batch-size", type=int, default=16)
 parser.add_argument("--dev-batch-size", type=int, default=256)
-parser.add_argument("--num-dev-dataset", type=int, default=100)
+parser.add_argument("--num-dev-dataset", type=int, default=128)
 parser.add_argument("--tensorboard-update-freq", type=int, default=1)
 parser.add_argument("--mixed-precision", action="store_true", help="Use mixed precision FP16")
 parser.add_argument("--seed", type=int, help="Set random seed")
@@ -106,7 +106,8 @@ def main(args: argparse.Namespace):
         for k, v in vars(args).items():
             fout.write(f"{k}: {v}\n")
 
-    with get_device_strategy(args.device).scope():
+    strategy = get_device_strategy(args.device)
+    with strategy.scope():
         if args.mixed_precision:
             logger.info("Use Mixed Precision FP16")
             mixed_type = "mixed_bfloat16" if args.device == "TPU" else "mixed_float16"
@@ -186,15 +187,18 @@ def main(args: argparse.Namespace):
             tokenizer.convert_tokens_to_ids(tokenizer.bos_token),
             tokenizer.convert_tokens_to_ids(tokenizer.eos_token),
             tokenizer.convert_tokens_to_ids(tokenizer.pad_token),
+            beam_size=args.beam_size,
         )
-        for batch, _ in dev_dataset:
+        for batch, _ in strategy.experimental_distribute_dataset(dev_dataset):
             if args.beam_size > 0:
-                output, ppl = searcher.beam_search(batch["input_ids"], batch["attention_mask"], args.beam_size)
-                output = output[:, 0, :]
-                ppl = ppl[:, 0]
+                output, ppl = strategy.run(searcher.beam_search, args=(batch["input_ids"], batch["attention_mask"]))
+                output = strategy.gather(output, axis=0)[:, 0, :]
+                ppl = strategy.gather(ppl, axis=0)[:, 0]
             else:
-                output, ppl = searcher.greedy_search(batch["input_ids"], batch["attention_mask"])
-            input_tokens.extend(batch["input_ids"].numpy())
+                output, ppl = strategy.run(searcher.greedy_search, args=(batch["input_ids"], batch["attention_mask"]))
+                output = strategy.gather(output, axis=0)
+                ppl = strategy.gather(ppl, axis=0)
+            input_tokens.extend(strategy.gather(batch["input_ids"], axis=0).numpy())
             predict_tokens.extend(output.numpy())
             ppls.extend(ppl.numpy())
 
