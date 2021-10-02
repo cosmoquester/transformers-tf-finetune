@@ -126,7 +126,7 @@ def main(args: argparse.Namespace):
         # Model Initialize
         logger.info("[+] Model Initialize")
         model = TFAutoModelForSeq2SeqLM.from_pretrained(
-            args.pretrained_model, use_auth_token=args.use_auth_token, from_pt=args.from_pytorch
+            args.pretrained_model, use_auth_token=args.use_auth_token, from_pt=args.from_pytorch, use_cache=False
         )
 
         # Model Compile
