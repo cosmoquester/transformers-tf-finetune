@@ -5,7 +5,7 @@ import sys
 import urllib.request
 
 import tensorflow as tf
-from transformers import AutoTokenizer, TFBartForConditionalGeneration
+from transformers import AutoTokenizer, TFAutoModelForSeq2SeqLM
 
 from transformers_tf_finetune.losses import SparseCategoricalCrossentropy
 from transformers_tf_finetune.metrics import SparseCategoricalAccuracy
@@ -15,8 +15,8 @@ from transformers_tf_finetune.utils import LRScheduler, get_device_strategy, get
 CHATBOT_URI = "https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData.csv"
 
 # fmt: off
-parser = argparse.ArgumentParser(description="Script to train Korean Chatbot conversation with BART")
-parser.add_argument("--pretrained-model", type=str, required=True, help="transformers bart pretrained path")
+parser = argparse.ArgumentParser(description="Script to train Korean Chatbot conversation with Seq2SeqLM")
+parser.add_argument("--pretrained-model", type=str, required=True, help="transformers seq2seq lm pretrained path")
 parser.add_argument("--pretrained-tokenizer", type=str, required=True, help="pretrained tokenizer fast pretrained path")
 parser.add_argument("--dataset-path", default=CHATBOT_URI, help="dataset if using local file")
 parser.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
@@ -125,7 +125,7 @@ def main(args: argparse.Namespace):
 
         # Model Initialize
         logger.info("[+] Model Initialize")
-        model = TFBartForConditionalGeneration.from_pretrained(
+        model = TFAutoModelForSeq2SeqLM.from_pretrained(
             args.pretrained_model, use_auth_token=args.use_auth_token, from_pt=args.from_pytorch
         )
 
