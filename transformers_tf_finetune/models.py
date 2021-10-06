@@ -22,11 +22,11 @@ class TFBartClassificationHead(tf.keras.layers.Layer):
         self.dropout = tf.keras.layers.Dropout(pooler_dropout, name="dropout")
         self.out_proj = tf.keras.layers.Dense(num_classes, name="out_proj")
 
-    def call(self, hidden_states: tf.Tensor):
-        hidden_states = self.dropout(hidden_states)
+    def call(self, hidden_states: tf.Tensor, training: bool = False):
+        hidden_states = self.dropout(hidden_states, training=training)
         hidden_states = self.dense(hidden_states)
         hidden_states = tf.math.tanh(hidden_states)
-        hidden_states = self.dropout(hidden_states)
+        hidden_states = self.dropout(hidden_states, training=training)
         hidden_states = self.out_proj(hidden_states)
         return hidden_states
 
@@ -124,7 +124,7 @@ class TFBartForSequenceClassification(TFBartPretrainedModel, TFSequenceClassific
         )
         last_hidden_state = outputs.last_hidden_state[:, -1, :]
 
-        logits = self.classification_head(hidden_states=last_hidden_state)
+        logits = self.classification_head(hidden_states=last_hidden_state, training=inputs["training"])
         loss = None if inputs["labels"] is None else self.compute_loss(labels=inputs["labels"], logits=logits)
 
         if not inputs["return_dict"]:
@@ -246,7 +246,10 @@ class TFBartForSequenceMultiClassification(TFBartPretrainedModel):
             training=inputs["training"],
         )
         last_hidden_state = outputs.last_hidden_state[:, -1, :]
-        outputs = [classification_head(last_hidden_state) for classification_head in self.classification_heads]
+        outputs = [
+            classification_head(last_hidden_state, training=inputs["training"])
+            for classification_head in self.classification_heads
+        ]
 
         if self.keys is not None:
             outputs = {key: output for key, output in zip(self.keys, outputs)}
@@ -272,14 +275,14 @@ class SemanticTextualSimailarityWrapper(tf.keras.Model):
         self.model = model
         self.dropout = tf.keras.layers.Dropout(embedding_dropout)
 
-    def call(self, inputs, training=None, **kwargs):
+    def call(self, inputs, training=False, **kwargs):
         input_ids1, input_ids2 = inputs
 
-        embedding1 = self.model(input_ids=input_ids1).last_hidden_state[:, -1, :]
-        embedding2 = self.model(input_ids=input_ids2).last_hidden_state[:, -1, :]
+        embedding1 = self.model(input_ids=input_ids1, training=training).last_hidden_state[:, -1, :]
+        embedding2 = self.model(input_ids=input_ids2, training=training).last_hidden_state[:, -1, :]
 
-        embedding1 = self.dropout(embedding1)
-        embedding2 = self.dropout(embedding2)
+        embedding1 = self.dropout(embedding1, training=training)
+        embedding2 = self.dropout(embedding2, training=training)
 
         return self.cosine_simailarity(embedding1, embedding2)
 
