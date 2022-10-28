@@ -9,7 +9,6 @@ from transformers import AutoTokenizer, TFAutoModelForSeq2SeqLM
 
 from transformers_tf_finetune.losses import SparseCategoricalCrossentropy
 from transformers_tf_finetune.metrics import SparseCategoricalAccuracy
-from transformers_tf_finetune.models import GenerationSearchWrapper
 from transformers_tf_finetune.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 CHATBOT_URI = "https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData.csv"
@@ -177,34 +176,25 @@ def main(args: argparse.Namespace):
         logger.info(f"[+] Test loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
 
         logger.info("[+] Start prediction")
-        input_tokens = []
-        predict_tokens = []
-        ppls = []
-        searcher = GenerationSearchWrapper(
-            model,
-            args.max_sequence_length,
-            tokenizer.convert_tokens_to_ids(tokenizer.bos_token),
-            tokenizer.convert_tokens_to_ids(tokenizer.eos_token),
-            tokenizer.convert_tokens_to_ids(tokenizer.pad_token),
-            beam_size=args.beam_size,
-        )
-        for batch, _ in strategy.experimental_distribute_dataset(dev_dataset):
-            if args.beam_size > 0:
-                output, ppl = strategy.run(searcher.beam_search, args=(batch["input_ids"], batch["attention_mask"]))
-                output = strategy.gather(output, axis=0)[:, 0, :]
-                ppl = strategy.gather(ppl, axis=0)[:, 0]
-            else:
-                output, ppl = strategy.run(searcher.greedy_search, args=(batch["input_ids"], batch["attention_mask"]))
-                output = strategy.gather(output, axis=0)
-                ppl = strategy.gather(ppl, axis=0)
-            input_tokens.extend(strategy.gather(batch["input_ids"], axis=0).numpy())
-            predict_tokens.extend(output.numpy())
-            ppls.extend(ppl.numpy())
+        if args.device == "TPU":
+            logger.warning("Predict is Not Supported with TPU. Use GPU after training and saving model")
 
-        input_sentences = tokenizer.batch_decode(input_tokens, skip_special_tokens=True)
-        predict_sentences = tokenizer.batch_decode(predict_tokens, skip_special_tokens=True)
-        for question, answer, ppl in zip(input_sentences, predict_sentences, ppls):
-            print(f"Q: {question} A: {answer} PPL:{ppl:.2f}")
+        with strategy.scope():
+            input_tokens = []
+            predict_tokens = []
+
+            for batch, _ in strategy.experimental_distribute_dataset(dev_dataset):
+                output = strategy.run(
+                    model.generate, kwargs={"input_ids": batch["input_ids"], "attention_mask": batch["attention_mask"]}
+                )
+
+                input_tokens.extend(strategy.gather(batch["input_ids"], axis=0).numpy())
+                predict_tokens.extend(output.numpy())
+
+            input_sentences = tokenizer.batch_decode(input_tokens, skip_special_tokens=True)
+            predict_sentences = tokenizer.batch_decode(predict_tokens, skip_special_tokens=True)
+            for question, answer in zip(input_sentences, predict_sentences):
+                print(f"Q: {question} A: {answer}")
 
 
 if __name__ == "__main__":
