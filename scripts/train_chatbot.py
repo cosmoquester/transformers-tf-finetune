@@ -58,8 +58,8 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     if shuffle:
         random.shuffle(lines)
 
-    bos = tokenizer.bos_token
-    eos = tokenizer.eos_token
+    bos = tokenizer.bos_token or tokenizer.cls_token or ""
+    eos = tokenizer.eos_token or tokenizer.sep_token
 
     questions = []
     answers = []
@@ -71,6 +71,7 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     inputs = tokenizer(
         questions,
         padding="max_length",
+        truncation=True,
         max_length=max_length,
         return_tensors="tf",
         return_token_type_ids=False,
@@ -80,6 +81,7 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     target_tokens = tokenizer(
         answers,
         padding="max_length",
+        truncation=True,
         max_length=max_length,
         return_tensors="tf",
         return_token_type_ids=False,
@@ -141,11 +143,8 @@ def main(args: argparse.Namespace):
                     args.warmup_steps,
                 )
             ),
-            loss={
-                "logits": SparseCategoricalCrossentropy(from_logits=True, ignore_index=tokenizer.pad_token_id),
-                "encoder_last_hidden_state": None,
-            },
-            metrics={"logits": SparseCategoricalAccuracy(ignore_index=tokenizer.pad_token_id, name="accuracy")},
+            loss=SparseCategoricalCrossentropy(from_logits=True, ignore_index=tokenizer.pad_token_id),
+            metrics=SparseCategoricalAccuracy(ignore_index=tokenizer.pad_token_id, name="accuracy"),
         )
 
         # Training
@@ -160,7 +159,7 @@ def main(args: argparse.Namespace):
                     checkpoint_path,
                     save_weights_only=True,
                     save_best_only=True,
-                    monitor="val_logits_accuracy",
+                    monitor="val_accuracy",
                     mode="max",
                     verbose=1,
                 ),
@@ -174,7 +173,7 @@ def main(args: argparse.Namespace):
         model.save_pretrained(path_join(args.output_path, "pretrained_model"))
 
         logger.info("[+] Start testing")
-        loss, _, accuracy = model.evaluate(dev_dataset)
+        loss, accuracy = model.evaluate(dev_dataset)
         logger.info(f"[+] Test loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
 
         logger.info("[+] Start prediction")

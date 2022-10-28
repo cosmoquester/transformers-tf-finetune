@@ -65,15 +65,15 @@ def load_dataset(dataset_path: str, tokenizer: AutoTokenizer, shuffle: bool = Fa
     if shuffle:
         random.shuffle(lines)
 
-    bos = tokenizer.bos_token or tokenizer.cls_token
-    eos = tokenizer.eos_token or tokenizer.sep_token
+    start_token = tokenizer.bos_token or tokenizer.cls_token or ""
+    end_token = tokenizer.eos_token or tokenizer.sep_token or ""
 
     sentences1 = []
     sentences2 = []
     normalized_labels = []
     for *_, score, sentence1, sentence2 in csv.reader(lines, delimiter="\t", quoting=csv.QUOTE_NONE):
-        sentences1.append(bos + sentence1 + eos)
-        sentences2.append(bos + sentence2 + eos)
+        sentences1.append(start_token + sentence1 + end_token)
+        sentences2.append(start_token + sentence2 + end_token)
         normalized_labels.append(float(score) / 5.0)
 
     inputs1 = dict(

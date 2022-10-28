@@ -68,9 +68,9 @@ def load_dataset(
     if shuffle:
         random.shuffle(examples)
 
-    start_token = tokenizer.bos_token or tokenizer.cls_token
-    end_token = tokenizer.eos_token or tokenizer.sep_token
-    sep = tokenizer.sep_token
+    start_token = tokenizer.bos_token or tokenizer.cls_token or ""
+    end_token = tokenizer.eos_token or tokenizer.sep_token or ""
+    sep = tokenizer.sep_token or tokenizer.eos_token
 
     sentences = []
     labels = []
