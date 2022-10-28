@@ -7,14 +7,14 @@
 
 Scripts and notebooks to train hugginface transformers models with Tensorflow 2
 You can train models with jupyter or python script using a separate machine, and even without it, you can learn with two clicks from the colab.
-Select Task below, enter [Open in Colab], and click [Runtime] - [Run all] to automatically load, learn, and evaluate data.
+Select Task below, enter `[Open in Colab]`, and click `[Runtime]` - `[Run all]` to automatically load, learn, and evaluate data.
 All code support GPU and TPU both.
 
 
 
-Tensorflow 2를 이용해 Transformer 모델들을 사전학습합니다.
+Tensorflow 2를 이용해 Transformer 모델들을 파인튜닝합니다.
 별도의 머신을 이용해 노트북이나 스크립트로 학습할 수 있으며 그게 없더라도 colab 에서 클릭 두 번으로 학습할 수 있습니다.
-아래에서 Task를 골라 [Open in Colab]으로 들어간 뒤에 [Runtime] - [Run all] 을 클릭하면 데이터로딩과 학습, 평가까지 자동으로 수행됩니다.
+아래에서 Task를 골라 `[Open in Colab]`으로 들어간 뒤에 `[Runtime]` - `[Run all]` 을 클릭하면 데이터로딩과 학습, 평가까지 자동으로 수행됩니다.
 모든 코드는 GPU, TPU 디바이스를 전부 지원합니다.
 
 ## Tasks
