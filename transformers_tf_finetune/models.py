@@ -11,7 +11,11 @@ class TFBartClassificationHead(tf.keras.layers.Layer):
     """Head for sentence-level classification tasks."""
 
     def __init__(
-        self, inner_dim: int, num_classes: int, pooler_dropout: float, **kwargs,
+        self,
+        inner_dim: int,
+        num_classes: int,
+        pooler_dropout: float,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.dense = tf.keras.layers.Dense(inner_dim, name="dense")
@@ -356,9 +360,12 @@ class GenerationSearchWrapper:
             sequence_lengths = tf.where(new_tokens == self.eos_id, tf.shape(decoder_input)[1] + 1, sequence_lengths)
 
             # [BatchSize, DecoderSequenceLength + 1]
-            mask = tf.one_hot(sequence_idx, depth=self.max_sequence_length, on_value=True, off_value=False,)[
-                tf.newaxis, :
-            ]
+            mask = tf.one_hot(
+                sequence_idx,
+                depth=self.max_sequence_length,
+                on_value=True,
+                off_value=False,
+            )[tf.newaxis, :]
             mask = tf.repeat(mask, batch_size, axis=0)
             new_tokens = tf.repeat(new_tokens, self.max_sequence_length, axis=1)
             decoder_input = tf.where(mask, new_tokens, decoder_input)
@@ -379,7 +386,11 @@ class GenerationSearchWrapper:
         ]
     )
     def beam_search(
-        self, encoder_input: tf.Tensor, attention_mask: tf.Tensor, alpha: float = 1, beta: int = 32,
+        self,
+        encoder_input: tf.Tensor,
+        attention_mask: tf.Tensor,
+        alpha: float = 1,
+        beta: int = 32,
     ) -> tf.Tensor:
         """
         Generate sentences using decoder by beam searching.
@@ -394,7 +405,10 @@ class GenerationSearchWrapper:
         """
         batch_size = tf.shape(encoder_input)[0]
         first_decoder_input = tf.concat(
-            [tf.fill([batch_size, 1], self.bos_id), tf.fill([batch_size, self.max_sequence_length - 1], self.pad_id),],
+            [
+                tf.fill([batch_size, 1], self.bos_id),
+                tf.fill([batch_size, self.max_sequence_length - 1], self.pad_id),
+            ],
             axis=1,
         )
         log_perplexity = tf.fill([batch_size, 1], 0.0)
@@ -465,9 +479,12 @@ class GenerationSearchWrapper:
 
             # [BatchSize * BeamSize, DecoderSequenceLength]
             decoder_input = tf.repeat(decoder_input, self.beam_size, axis=0)
-            mask = tf.one_hot(sequence_idx, depth=self.max_sequence_length, on_value=True, off_value=False,)[
-                tf.newaxis, :
-            ]
+            mask = tf.one_hot(
+                sequence_idx,
+                depth=self.max_sequence_length,
+                on_value=True,
+                off_value=False,
+            )[tf.newaxis, :]
             mask = tf.repeat(mask, batch_size * self.beam_size * self.beam_size, axis=0)
             new_tokens = tf.repeat(new_tokens, self.max_sequence_length, axis=1)
             decoder_input = tf.where(mask, new_tokens, decoder_input)
