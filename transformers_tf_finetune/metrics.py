@@ -23,7 +23,6 @@ def get_rank(data: tf.Tensor) -> tf.Tensor:
     :param data: Input data shaped [BatchSize]
     :returns: averaged rank of each item.
     """
-    data = tf.squeeze(data)
     tf.debugging.assert_rank(data, 1)
 
     _, index, counts = unique_with_counts(tf.sort(data))
@@ -45,8 +44,8 @@ def pearson_correlation_coefficient(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
     :param y: Input Tensor shaped [BatchSize]
     :returns: pearson correlation scalar tensor
     """
-    x = tf.squeeze(tf.cast(x, tf.float32))
-    y = tf.squeeze(tf.cast(y, tf.float32))
+    x = tf.cast(x, tf.float32)
+    y = tf.cast(y, tf.float32)
 
     tf.debugging.assert_rank(x, 1)
     tf.debugging.assert_rank(y, 1)
@@ -109,8 +108,8 @@ class BinaryF1Score(tf.keras.metrics.Metric):
         self.eps = 1e-8
 
     def update_state(self, y_true, y_pred, sample_weight=None):
-        y_true = tf.cast(tf.squeeze(y_true) > self.threshold, dtype=tf.float32)
-        y_pred = tf.cast(tf.squeeze(y_pred) > self.threshold, dtype=tf.float32)
+        y_true = tf.cast(y_true > self.threshold, dtype=tf.float32)
+        y_pred = tf.cast(y_pred > self.threshold, dtype=tf.float32)
 
         true_positive = tf.reduce_sum(y_true * y_pred, axis=-1)
         true_ground_truth = tf.reduce_sum(y_true, axis=-1)
